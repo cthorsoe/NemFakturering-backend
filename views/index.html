@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Team Up API</title>
+</head>
+<body>
+    <h1>Welcome to the Team Up API</h1>
+    <h2>Available routes</h2>
+    <h3>Users</h3>
+        <ul>
+            <li>GET - /users/get-user/:username - Gets data of specific user where the passed username matches.</li>
+            <li>GET - /users/get-team-invites-count/:username - Gets the amount of curret team invites for the user where the passed username matches.</li>
+            <li>GET - /users/get-listed-users - Gets a list of users listed as looking for team.</li>
+            <li>GET - /users/get-my-teams/:username - Gets a list of teams which the user, which the passed username matches, is on.</li>
+            <li>POST - /users/create-user - Creates a new user based on the data passed in the body.</li>
+            <li>POST - /users/login - Tries to login based on username and password passed in the body.</li>
+            <li>POST - /users/login-by-session - Tries to login based on sessionSalt and sessionId passed in the body.</li>
+            <li>POST - /users/list-user - Updates data of user and lists the user as looking for team based on the data passed in the body.</li>
+            <li>PUT - /users/edit-user - Updates the data of an existing user based on the data passed in the body.</li>
+            <li>DELETE - /users/delete-user/:username - Deletes the user where the passed username matches.</li>
+            <li>DELETE - /users/delete-login-session/:id - Deletes the login session that matches the passed id.</li>
+        </ul>
+    <h3>Teams</h3>
+    <ul>
+        <li>GET - /teams/get-team/:id - Gets data of specific team, including members, where the passed id matches.</li>
+        <li>GET - /teams/get-listed-teams - Gets a list of teams listed as looking for players.</li>
+        <li>POST - /teams/create-team - Creates a new team based on the data passed in the body, adds the creator as the only member.</li>
+        <li>POST - /teams/list-user - Lists the team as looking for players where the id passed in the body matches.</li>
+        <li>PUT - /teams/edit-team - Updates the data of an existing team based on the data passed in the body.</li>
+        <li>DELETE - /teams/delete-team/:id - Deletes the user where the passed id matches.</li>
+    </ul>
+</body>
+</html>
