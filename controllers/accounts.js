@@ -63,6 +63,28 @@ accountsController.getAccountStats = (iAccountId, fCallback) => {
   }) 
 }
 
+accountsController.login = (req, res, next, jLoginForm, fCallback) => {
+   passport.authenticate('local', (err, user, info) => {
+      if(info) {
+         console.log('INFO')
+         return res.send(info.message)
+      }
+      if (err) { 
+         console.log('ERR')
+         return next(err); 
+      }
+      if (!user) { 
+         console.log('!user')
+         return res.redirect('/accounts/login');
+      }
+      req.login(user, (err) => {
+         if (err) { return next(err); }
+         return  fCallback(false, 'SUCCESS')
+         //return res.redirect('/accounts/auth');
+      })
+   })(req, res, next);
+}
+
 
 
 module.exports = accountsController

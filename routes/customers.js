@@ -4,7 +4,7 @@ const customersController = require('../controllers/customers')
 router.get('/list/:accountId', (req, res) => {
    const iAccountId = req.params.accountId
    customersController.getAccountsCustomers(iAccountId, (err, ajCustomers) => {
-      if(err){
+      if (err) {
          console.log(err)
          return res.send(err)
       }
@@ -15,7 +15,7 @@ router.get('/list/:accountId', (req, res) => {
 router.delete('/delete/:customerId', (req, res) => {
    const iCustomerId = req.params.customerId
    customersController.deleteCustomer(iCustomerId, (err, jResponse) => {
-      if(err){
+      if (err) {
          console.log(err)
          return res.send(err)
       }
@@ -26,7 +26,7 @@ router.delete('/delete/:customerId', (req, res) => {
 router.put('/edit', (req, res) => {
    const jCustomer = req.body
    customersController.updateCustomer(jCustomer, (err, jResponse) => {
-      if(err){
+      if (err) {
          console.log(err)
          return res.send(err)
       }
@@ -38,7 +38,7 @@ router.post('/create', (req, res) => {
    const jCustomer = req.body.customer
    const iAccountId = req.body.accountId
    customersController.createCustomer(jCustomer, iAccountId, (err, jResponse) => {
-      if(err){
+      if (err) {
          console.log(err)
          return res.send(err)
       }
