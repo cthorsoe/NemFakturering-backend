@@ -3,12 +3,12 @@
      {
        "id":"2f24vvg",
        "email": "test@test.com",
-       "password": "password" 
+       "password": "$2a$10$4.1NFybFvJWFyDZhHOtPXOLJU67sm8Q78PVOBmaGrZYHtqPrboiMm" 
      },
      {
        "id":"d1u9nq",
        "email": "user2@example.com",
-       "password": "password"
+       "password": "$2a$10$FA7fbQwRCVcRjG8B7usXQ.OzNn3nac4UVLxtb.T3RFkL.bI1NCJYi"
      }
    ]
  }

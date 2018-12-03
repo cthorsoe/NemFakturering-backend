@@ -1,17 +1,17 @@
 global.express = require('express')
 const app = express()
 const uuid = require('uuid/v4');
+const session = require('express-session')
 require('dotenv').config()
 global.fs = require('fs')
 global.path = require('path')
 global.request = require('request')
-const bodyParser = require("body-parser")
 // const cookieParser = require('cookie-parser')
-const session = require('express-session')
 const FileStore = require('session-file-store')(session);
+const bodyParser = require("body-parser")
 global.passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
-const axios = require('axios');
+global.bcrypt = require('bcrypt-nodejs');
 const cors = require('cors') // To allow requests from different domains.
 
 const accountsRouter = require('./routes/accounts');
@@ -19,31 +19,38 @@ const invoicesRouter = require('./routes/invoices');
 const customersRouter = require('./routes/customers');
 const itemsRouter = require('./routes/items');
 
+const accountsController = require('./controllers/accounts')
+
 global.db = require('./utilities/db');
 global.functions = require('./utilities/functions');
 
 global.sSmsesIoApiToken = "$2y$10$fkMJCdFng8vkbpVD2h1OcuWGMuUCIk2SWfe62JvtXZtqhtiqvmPw6";
 
-const users = [
-   {id: '2f24vvg', email: 'test@test.com', password: 'password'}
-]
+const regexEmail = /\S+@\S+\.\S+/
 
 // configure passport.js to use the local strategy
 passport.use(new LocalStrategy(
-   { usernameField: 'email' },
-   (email, password, done) => {
-      axios.get(`http://localhost:5000/users?email=${email}`)
-      .then(res => {
-        const user = res.data[0]
-        if (!user) {
-          return done(null, false, { message: 'Invalid credentials.\n' });
-        }
-        if (password != user.password) {
-          return done(null, false, { message: 'Invalid credentials.\n' });
-        }
-        return done(null, user);
+   { 
+      usernameField: 'identifier',    // define the parameter in req.body that passport can use as username and password
+      passwordField: 'password' 
+   },
+   (identifier, password, done) => {
+      let sField = 'username'
+      if(regexEmail.test(identifier)){
+         sField = 'email'
+      }
+      accountsController.getSpecificAccount(sField, identifier, true, (err, jAccount) => {
+         if(err){
+            return done(null, false, { message: 'An error occured when getting account from database\n' });
+         }
+         if (!jAccount) {
+            return done(null, false, { message: 'FAILED' });
+         }
+         if (!bcrypt.compareSync(password, jAccount.password)) {
+            return done(null, false, { message: 'FAILED' });
+         }
+         return done(null, jAccount);
       })
-      .catch(error => done(error));
     }
  ));
  
@@ -54,20 +61,24 @@ passport.serializeUser((user, done) => {
 });
 
 passport.deserializeUser((id, done) => {
-   axios.get(`http://localhost:5000/users/${id}`)
-      .then(res => done(null, res.data) )
-      .catch(error => done(error, false))
+   accountsController.getSpecificAccount('id', id, true, (err, jAccount) => {
+      if(err){
+         return done(error, false)
+      }
+      done(null, jAccount)
+   })
 });
 
 app.set('trust proxy', 1)
 app.use(session({
    genid: (req) => {
-     return uuid() // use UUIDs for session IDs
+     return uuid() // use UUIDs for session IDs 
    },
    store: new FileStore(),
    secret: process.env.SECRET,
    resave: false,
-   saveUninitialized: true
+   saveUninitialized: true,
+   httpOnly: true
 }))
 app.use(passport.initialize());
 app.use(passport.session());
@@ -76,8 +87,20 @@ app.use(express.static(__dirname + '/../../public'));
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+// app.use(cookieParser)
 // app.use(cors({origin: 'http://localhost:4200'}));
-app.use(cors())
+
+const originsWhitelist = [
+   process.env.FRONTEND_URL,
+];
+const corsOptions = {
+   origin: function(origin, callback){
+         const isWhitelisted = originsWhitelist.indexOf(origin) !== -1;
+         callback(null, isWhitelisted);
+   },
+   credentials:true
+}
+app.use(cors(corsOptions))
 // app.use(cors({origin: process.env.FRONTEND_URL}));
 app.use('/accounts', accountsRouter);
 app.use('/invoices', invoicesRouter);

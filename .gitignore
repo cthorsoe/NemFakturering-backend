@@ -56,3 +56,9 @@ typings/
 
 # dotenv environment variables file
 .env
+
+#session files
+sessions/
+
+#session files
+db/node_modules/

@@ -4,36 +4,23 @@ var aParams = [];
 var jError = {};
 var jSuccess = { status: 'success'}
 
-// accountsController.getSpecificAccount = (iAccountId, fCallback) => {
-//    aParams = [iAccountId]
-//    sQuery = `SELECT accounts.id, accounts.name, accounts.cvr, accounts.street, accounts.zipcode, accounts.city, accounts.email, accounts.phone, accountconfigurations.bankaccountnumber, accountconfigurations.bankname, accountconfigurations.bankregnumber, accountconfigurations.invoicenumberminlength, accountconfigurations.invoicenumberprefix, accountconfigurations.invoicenumberstartvalue
-//             FROM accounts 
-//             LEFT JOIN accountconfigurations ON accountconfigurations.fk_accounts_id = accounts.id   
-//             WHERE accounts.id = ?`;
-//    db.query(sQuery, aParams, (err, ajCustomers) => {
-//       if(err){
-//           console.log('err', err)
-//           return fCallback(true)
-//       }
-//       const jCustomer = ajCustomers[0];
-//       return fCallback(false, jCustomer)
-//   }) 
-// }
-
-accountsController.getSpecificAccount = (iAccountId, fCallback) => {
-   aParams = [iAccountId]
-   sQuery = `SELECT id, name, cvr, street, zipcode, city, email, phone
+accountsController.getSpecificAccount = (sIdentifier, parameter, bAuthorizing, fCallback) => {
+   aParams = [parameter]
+   sQuery = `SELECT id, name, cvr, street, zipcode, city, email, phone` + (bAuthorizing ? ', password' : '') + `
             FROM accounts 
-            WHERE id = ?`;
+            WHERE ${sIdentifier} = ?`;
    db.query(sQuery, aParams, (err, ajAccounts) => {
       if(err){
-         console.log('err', err)
-         return fCallback(true)
+         console.log(err)
+         return fCallback(true, err)
+      }else if(ajAccounts.length < 1){
+         return fCallback(false, undefined)
       }
       const jAccount = ajAccounts[0];
       sQuery = `SELECT invoicenumberstartvalue, invoicenumberprefix, invoicenumberminlength, bankname, bankregnumber, bankaccountnumber
                FROM accountconfigurations 
                WHERE fk_accounts_id = ?`;
+      aParams = [jAccount.id]
       db.query(sQuery, aParams, (err, ajConfigurations) => {
          if(err){
             console.log('err', err)
@@ -42,8 +29,7 @@ accountsController.getSpecificAccount = (iAccountId, fCallback) => {
          const jConfiguration = ajConfigurations[0];
          jAccount.configuration = jConfiguration;
          return fCallback(false, jAccount)
-      }) 
-      // return fCallback(false, jAccount)
+      })
    }) 
 }
 
@@ -65,25 +51,65 @@ accountsController.getAccountStats = (iAccountId, fCallback) => {
 
 accountsController.login = (req, res, next, jLoginForm, fCallback) => {
    passport.authenticate('local', (err, user, info) => {
-      if(info) {
-         console.log('INFO')
-         return res.send(info.message)
-      }
-      if (err) { 
-         console.log('ERR')
-         return next(err); 
-      }
-      if (!user) { 
-         console.log('!user')
-         return res.redirect('/accounts/login');
-      }
+      if(info) {return res.send(info.message)}
+      if (err) { return next(err); }
+      // if (!user) { return res.redirect('/login'); }
+      if (!user) { fCallback(false, undefined) }
       req.login(user, (err) => {
-         if (err) { return next(err); }
-         return  fCallback(false, 'SUCCESS')
-         //return res.redirect('/accounts/auth');
+        if (err) { return next(err); }
+        return fCallback(false, user)
+      //   return res.redirect('/accounts/auth');
       })
    })(req, res, next);
+   // passport.authenticate('local', (err, user, info) => {
+   //    if(info) {
+   //       console.log('INFO', info)
+   //       return res.send(info.message)
+   //    }
+   //    if (err) { 
+   //       console.log('AUTH ERR')
+   //       return next(err); 
+   //    }
+   //    if (!user) { 
+   //       console.log('!user')
+   //       return res.redirect('/accounts/login');
+   //    }
+   //    req.login(user, (err) => {
+   //       if (err) { return next(err); }
+   //       //return res.redirect('/accounts/auth');
+   //       return fCallback(false, 'SUCCESS')
+   //    })
+   // })(req, res, next);
 }
+
+// accountsController.retrieveAccountFromDB = (sIdentifier, parameter, fCallback) => {
+//    aParams = [parameter]
+//    sQuery = `SELECT id, name, cvr, street, zipcode, city, email, phone` + (bAuthorizing ? ', password' : '') + `
+//             FROM accounts 
+//             WHERE ${sIdentifier} = ?`;
+//    db.query(sQuery, aParams, (err, ajAccounts) => {
+//       if(err){
+//          console.log(err)
+//          return fCallback(true, err)
+//       }else if(ajAccounts.length < 1){
+//          return fCallback({ message: 'No account was found' })
+//       }
+//       const jAccount = ajAccounts[0];
+//       sQuery = `SELECT invoicenumberstartvalue, invoicenumberprefix, invoicenumberminlength, bankname, bankregnumber, bankaccountnumber
+//                FROM accountconfigurations 
+//                WHERE fk_accounts_id = ?`;
+//       aParams = [jAccount.id]
+//       db.query(sQuery, aParams, (err, ajConfigurations) => {
+//          if(err){
+//             console.log('err', err)
+//             return fCallback(true)
+//          }
+//          const jConfiguration = ajConfigurations[0];
+//          jAccount.configuration = jConfiguration;
+//          return fCallback(false, jAccount)
+//       })
+//    }) 
+// }
 
 
 
