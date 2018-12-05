@@ -1,6 +1,17 @@
 const router = express.Router()
 const accountsController = require('../controllers/accounts')
 
+router.post('/create', (req, res) => {
+   const jAccount = req.body
+   accountsController.createAccount(jAccount, (err, jResponse) => {
+      if (err) {
+         console.log(err)
+         return res.send(jResponse)
+      }
+      return res.send(jResponse)
+   })
+});
+
 router.get('/specific/:accountId', (req, res) => {
    console.log('ROUTER HIT')
    const iAccountId = req.params.accountId
@@ -80,20 +91,22 @@ router.post('/login', (req, res, next) => {
    }
    console.log('jLoginForm', jLoginForm)
    // res.send('LOGIN HIT')
-   accountsController.login(req, res, next, jLoginForm, (err, jResponse) => {
+   accountsController.login(req, res, next, (err, jResponse) => {
       if (err) {
          console.log(err)
          return res.send(jResponse)
       }
-      console.log('REDIRECTING')
-      // return res.redirect('/accounts/auth')
+      req.cookies.loginCookie = req.session.id
       return res.send(jResponse)
    })
 });
 
 router.get('/auth', (req, res) => {
    console.log('Inside GET /authrequired callback')
-   
+   // if(req.cookies && req.cookies.loginCookie){
+   //    console.log('COOKIE IS', req.cookies.loginCookie)
+      
+   // }
    console.log(`User authenticated? ${req.isAuthenticated()}`)
    if(req.isAuthenticated()) {
       console.log(req.user);

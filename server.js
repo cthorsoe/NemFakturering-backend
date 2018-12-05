@@ -2,6 +2,7 @@ global.express = require('express')
 const app = express()
 const uuid = require('uuid/v4');
 const session = require('express-session')
+// const cs = require('client-sessions');
 require('dotenv').config()
 global.fs = require('fs')
 global.path = require('path')
@@ -77,12 +78,20 @@ app.use(session({
    store: new FileStore(),
    secret: process.env.SECRET,
    resave: false,
-   saveUninitialized: true,
+   saveUninitialized: false,
    httpOnly: true
 }))
 app.use(passport.initialize());
 app.use(passport.session());
  
+
+// app.use(cs({
+//    cookieName: 'cookies',
+//    secret: 'random_string_goes_here',
+//    duration: 30 * 60 * 1000,
+//    activeDuration: 5 * 60 * 1000,
+// }));
+
 app.use(express.static(__dirname + '/../../public'));
 
 app.use(bodyParser.urlencoded({ extended: false }));
