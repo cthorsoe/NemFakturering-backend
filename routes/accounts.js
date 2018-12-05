@@ -84,7 +84,7 @@ router.get('/stats/:accountId', (req, res) => {
 //    })
 // });
 
-router.post('/login', (req, res, next) => {
+/* router.post('/login', (req, res, next) => {
    const jLoginForm = {
       identifier: req.body.identifier,
       password: req.body.password
@@ -99,22 +99,70 @@ router.post('/login', (req, res, next) => {
       req.cookies.loginCookie = req.session.id
       return res.send(jResponse)
    })
+}); */
+
+router.post('/login', (req, res, next) => {
+   const jLoginForm = {
+      identifier: req.body.identifier,
+      password: req.body.password
+   }
+   console.log('jLoginForm', jLoginForm)
+   // res.send('LOGIN HIT')
+   accountsController.login(req, jLoginForm, (err, jResponse) => {
+      if (err) {
+         console.log(err)
+         return res.send(jResponse)
+      }
+      console.log(req.cookies);
+      return res.send(jResponse)
+   })
 });
 
-router.get('/auth', (req, res) => {
-   console.log('Inside GET /authrequired callback')
-   // if(req.cookies && req.cookies.loginCookie){
-   //    console.log('COOKIE IS', req.cookies.loginCookie)
+// router.get('/auth', (req, res) => {
+//    console.log('Inside GET /authrequired callback')
+//    // if(req.cookies && req.cookies.loginCookie){
+//    //    console.log('COOKIE IS', req.cookies.loginCookie)
       
-   // }
-   console.log(`User authenticated? ${req.isAuthenticated()}`)
-   if(req.isAuthenticated()) {
-      console.log(req.user);
-     res.send(req.user.id.toString())
-   } else {
-     res.send(undefined)
+//    // }
+//    console.log(`User authenticated? ${req.isAuthenticated()}`)
+//    if(req.isAuthenticated()) {
+//       console.log(req.user);
+//      res.send(req.user.id.toString())
+//    } else {
+//      res.send(undefined)
+//    }
+//  })
+
+router.get('/auth', (req, res) => {
+   if(!req.cookies && req.cookies.sessionkey != undefined){
+      console.log('NO COOKIES')
+      return res.send('undefined')
    }
- })
+   let sSessionKey = req.cookies.sessionkey;
+   let sSessionValue = req.cookies.sessionvalue;
+   console.log('COOKIES', req.cookies)
+   accountsController.getSessionData(sSessionKey, (err, jSessionData) => {
+      if(err){
+         return res.send('undefined')
+      }
+      bcrypt.hash(jSessionData.fk_accounts_id, jSessionData.sessionsalt, undefined, (err, incrypted) => {
+      if(err){
+         console.log('ERR HASHING')
+         return res.send('undefined')
+      }
+      if(incrypted == sSessionValue){
+         accountsController.getSpecificAccount('id', jSessionData.fk_accounts_id, false, (err, jAccount) => {
+            if(err){
+               return res.send('undefined')
+            }
+            return res.send(jAccount)
+         })
+      }
+      // return res.send('undefined')
+      });
+   })
+})
+
 
 router.get('/redirect', (req, res) => {
    return res.redirect('/accounts/redirected')

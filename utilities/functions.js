@@ -1,5 +1,6 @@
 const crypto = require('crypto')
 const moment = require('moment')
+const regexEmail = /\S+@\S+\.\S+/
 
 var jFunctions = {}
 const jError = {} // ??
@@ -92,6 +93,10 @@ jFunctions.createError = (sCode, sDescription, sMessage, jError = {}) => {
         errorObj: jError
     }
     return jError
+}
+
+jFunctions.validateEmail = (sEmail) => {
+   return regexEmail.test(sEmail)
 }
 
 module.exports = jFunctions;

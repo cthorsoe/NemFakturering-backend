@@ -1,14 +1,14 @@
 global.express = require('express')
 const app = express()
-const uuid = require('uuid/v4');
-const session = require('express-session')
-// const cs = require('client-sessions');
+global.uuid = require('uuid/v4');
+// const session = require('express-session')
+const cookies = require('client-sessions');
 require('dotenv').config()
 global.fs = require('fs')
 global.path = require('path')
 global.request = require('request')
 // const cookieParser = require('cookie-parser')
-const FileStore = require('session-file-store')(session);
+// const FileStore = require('session-file-store')(session);
 const bodyParser = require("body-parser")
 global.passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
@@ -33,11 +33,11 @@ const regexEmail = /\S+@\S+\.\S+/
 passport.use(new LocalStrategy(
    { 
       usernameField: 'identifier',    // define the parameter in req.body that passport can use as username and password
-      passwordField: 'password' 
+      passwordField: 'password'
    },
    (identifier, password, done) => {
       let sField = 'username'
-      if(regexEmail.test(identifier)){
+      if(global.jFunctions.validateEmail(identifier)){
          sField = 'email'
       }
       accountsController.getSpecificAccount(sField, identifier, true, (err, jAccount) => {
@@ -56,46 +56,47 @@ passport.use(new LocalStrategy(
  ));
  
  // tell passport how to serialize the user
-passport.serializeUser((user, done) => {
-   console.log('Inside serializeUser callback. User id is save to the session file store here')
-   done(null, user.id);
-});
+// passport.serializeUser((user, done) => {
+//    console.log('Inside serializeUser callback. User id is save to the session file store here')
+//    done(null, user.id);
+// });
 
-passport.deserializeUser((id, done) => {
-   accountsController.getSpecificAccount('id', id, true, (err, jAccount) => {
-      if(err){
-         return done(error, false)
-      }
-      done(null, jAccount)
-   })
-});
+// passport.deserializeUser((id, done) => {
+//    accountsController.getSpecificAccount('id', id, true, (err, jAccount) => {
+//       if(err){
+//          return done(error, false)
+//       }
+//       done(null, jAccount)
+//    })
+// });
 
-app.set('trust proxy', 1)
-app.use(session({
-   genid: (req) => {
-     return uuid() // use UUIDs for session IDs 
-   },
-   store: new FileStore(),
-   secret: process.env.SECRET,
-   resave: false,
-   saveUninitialized: false,
-   httpOnly: true
-}))
-app.use(passport.initialize());
-app.use(passport.session());
+// app.set('trust proxy', 1)
+// app.use(session({
+//    genid: (req) => {
+//      return uuid() // use UUIDs for session IDs 
+//    },
+//    store: new FileStore(),
+//    secret: process.env.SECRET,
+//    resave: false,
+//    saveUninitialized: false,
+//    httpOnly: true
+// }))
+// app.use(passport.initialize());
+// app.use(passport.session());
  
 
-// app.use(cs({
-//    cookieName: 'cookies',
-//    secret: 'random_string_goes_here',
-//    duration: 30 * 60 * 1000,
-//    activeDuration: 5 * 60 * 1000,
-// }));
+app.use(cookies({
+   cookieName: 'cookies',
+   secret: process.env.SECRET,
+   duration: 30 * 60 * 1000,
+   activeDuration: 5 * 60 * 1000,
+}));
 
 app.use(express.static(__dirname + '/../../public'));
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.enable('trust proxy')
 // app.use(cookieParser)
 // app.use(cors({origin: 'http://localhost:4200'}));
 
@@ -126,6 +127,73 @@ app.listen(3333, err => {
 
 app.get('/', (req, res) => {
    console.log('===============')
-   console.log(req.session.id)
    return res.send('NEM FAKTURERING API')
+})
+
+app.get('/testcookie', (req, res) => {
+   if(req.cookies && req.cookies.sessionkey){
+      // return res.send(req.cookies)
+      let sSessionKey = req.cookies.sessionkey;
+      let sSessionValue = req.cookies.sessionvalue;
+      let aParams = [sSessionKey];
+      let sQuery = `SELECT sessionsalt, fk_accounts_id FROM loginsessions WHERE sessionkey = ?`;
+      db.query(sQuery, aParams, (err, ajSessionData) => {
+         console.log('res', ajSessionData)
+         if(err){
+            console.log('err', err)
+            return res.send('ERROR')
+         }
+         if(ajSessionData.length < 1){
+            return res.send('ERROR')
+         }
+         let jSessionData = ajSessionData[0]
+         bcrypt.hash(jSessionData.fk_accounts_id, jSessionData.sessionsalt, undefined, (err, incrypted) => {
+            if(err){
+               console.log('ERR HASHING')
+               return res.send('ERROR')
+            }
+            if(incrypted == sSessionValue){
+               return res.send('MATCH')
+            }
+            return res.send('NO MATCH')
+         });
+      }) 
+   }
+   // return res.send('NONE')
+})
+
+app.get('/setcookie', (req, res) => {
+   let userId = 6;
+   bcrypt.genSalt(process.env.ENCRYPTION_ROUNDS, (err, salt) => {
+      if(err){
+         console.log('ERR GEN SALT')
+         return res.send('ERROR NO COOKIE SET')
+      }
+      bcrypt.hash(userId, salt, undefined, (err, incrypted) => {
+         if(err){
+            console.log('ERR HASHING')
+            return res.send('ERROR NO COOKIE SET')
+         }
+         let sSessionKey = uuid()
+         req.cookies.sessionvalue = incrypted
+         req.cookies.sessionkey = sSessionKey
+         let ajSessionData = [{
+            sessionkey: sSessionKey,
+            sessionsalt: salt,
+            fk_accounts_id: userId
+         }];
+         let sQuery = `INSERT INTO loginsessions SET ?`;
+         db.query(sQuery, ajSessionData, (err, jResult) => {
+            console.log('res', jResult)
+            if(err){
+               console.log('err', err)
+               return res.send('ERROR')
+            }
+            return res.send('COOKIE SET')
+         }) 
+         // return res.send('COOKIE SET')
+      });
+   });
+   // req.cookies.test = 'TEST1234'
+   // return res.send('COOKIE SET')
 })

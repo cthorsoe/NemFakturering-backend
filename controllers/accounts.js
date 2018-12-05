@@ -124,12 +124,12 @@ accountsController.getAccountStats = (iAccountId, fCallback) => {
           console.log('err', err)
           return fCallback(true)
       }
-      
+
       return fCallback(false, jResult)
   }) 
 }
 
-accountsController.login = (req, res, next, fCallback) => {
+/* accountsController.login = (req, res, next, fCallback) => {
    passport.authenticate('local', (err, user, info) => {
       if (info) { return res.send(info.message) }
       if (err) { return next(err); }
@@ -140,6 +140,94 @@ accountsController.login = (req, res, next, fCallback) => {
          return fCallback(false, user)
       })
    })(req, res, next);
+} */
+
+accountsController.login = (req, jLoginForm, fCallback) => {
+   let sIdentifier = jLoginForm.identifier
+   let sField = 'username'
+   if(functions.validateEmail(sIdentifier)){
+      sField = 'email'
+   }
+   accountsController.getSpecificAccount(sField, sIdentifier, true, (err, jAccount) => {
+      if(err){
+         console.log('ERR', err)
+         return fCallback(true, { status: 'ERROR' })
+      }
+      if(!jAccount){
+         return fCallback(false, { status: 'NOUSER' })
+      }
+      if(!bcrypt.compareSync(jLoginForm.password, jAccount.password)){
+         return fCallback(false, { status: 'NOMATCH' })
+      }
+      accountsController.setLoginCookie(req, jAccount.id, (err, jResponse) => {
+         if(err){
+            return fCallback(true, { status: 'ERROR' })
+         }
+         delete jAccount.password
+         return fCallback(false, jAccount)
+      })
+   })
 }
+
+accountsController.setLoginCookie = (req, iUserId, fCallback) => {
+   bcrypt.genSalt(process.env.ENCRYPTION_ROUNDS, (err, salt) => {
+      if(err){
+         console.log('ERR GEN SALT')
+         return fCallback(true, err)
+      }
+      bcrypt.hash(iUserId, salt, undefined, (err, incrypted) => {
+         if(err){
+            console.log('ERR HASHING')
+            return fCallback(true, err)
+         }
+         let sSessionKey = uuid()
+         req.cookies.sessionvalue = incrypted
+         req.cookies.sessionkey = sSessionKey
+         aParams = [{
+            sessionkey: sSessionKey,
+            sessionsalt: salt,
+            fk_accounts_id: iUserId
+         }];
+         sQuery = `INSERT INTO loginsessions SET ?`;
+         db.query(sQuery, aParams, (err, jResult) => {
+            if(err){
+               console.log('err', err)
+               return fCallback(true, err)
+            }
+            return fCallback(false, 'COOKIE SET')
+         })
+      });
+   });
+}
+
+accountsController.getSessionData = (sSessionKey, fCallback) => {
+   aParams = [sSessionKey];
+   console.log('sSessionKey', sSessionKey)
+   sQuery = `SELECT sessionsalt, fk_accounts_id FROM loginsessions WHERE sessionkey = ?`;
+   db.query(sQuery, aParams, (err, ajSessionData) => {
+      console.log('res', ajSessionData)
+      if(err){
+         console.log('err', err)
+         return fCallback(true)
+      }
+      if(ajSessionData.length < 1){
+         return fCallback(true)
+      }
+      let jSessionData = ajSessionData[0]
+      return fCallback(false, jSessionData);
+      // bcrypt.hash(jSessionData.fk_accounts_id, jSessionData.sessionsalt, undefined, (err, incrypted) => {
+      //    if(err){
+      //       console.log('ERR HASHING')
+      //       return res.send('ERROR')
+      //    }
+      //    if(incrypted == sSessionValue){
+      //       return res.send('MATCH')
+      //    }
+      //    return res.send('NO MATCH')
+      // });
+   }) 
+}
+
+
 
 module.exports = accountsController
