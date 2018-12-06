@@ -29,6 +29,8 @@ global.sSmsesIoApiToken = "$2y$10$fkMJCdFng8vkbpVD2h1OcuWGMuUCIk2SWfe62JvtXZtqht
 
 // const regexEmail = /\S+@\S+\.\S+/
 
+const iCookieDuration = parseInt(process.env.COOKIE_AGE);
+
 
 // configure passport.js to use the local strategy
 passport.use(new LocalStrategy(
@@ -86,14 +88,21 @@ passport.use(new LocalStrategy(
 // app.use(passport.session());
  
 
+// app.use(cookies({
+//    cookieName: 'cookies',
+//    secret: process.env.SECRET,
+//    duration: 30 * 60 * 1000,
+//    activeDuration: 5 * 60 * 1000,
+// }));
+
 app.use(cookies({
    cookieName: 'cookies',
    secret: process.env.SECRET,
-   duration: process.env.COOKIE_AGE,
-   activeDuration: process.env.COOKIE_AGE,
+   duration: iCookieDuration,
+   activeDuration: iCookieDuration,
    cookie: { 
       path: '/',
-      maxAge: process.env.COOKIE_AGE,
+      maxAge: iCookieDuration,
       ephemeral: false,
       httpOnly:true,
       secure: false
