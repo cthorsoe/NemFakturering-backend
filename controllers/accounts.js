@@ -97,20 +97,33 @@ accountsController.getSpecificAccount = (sIdentifier, parameter, bAuthorizing, f
          return fCallback(false, undefined)
       }
       const jAccount = ajAccounts[0];
-      sQuery = `SELECT invoicenumberstartvalue, invoicenumberprefix, invoicenumberminlength, bankname, bankregnumber, bankaccountnumber
-               FROM accountconfigurations 
-               WHERE fk_accounts_id = ?`;
-      aParams = [jAccount.id]
-      db.query(sQuery, aParams, (err, ajConfigurations) => {
+      accountsController.getAccountConfiguration(jAccount.id, (err, jConfiguration) => {
          if(err){
             console.log('err', err)
-            return fCallback(true)
+            return fCallback(true, err)
          }
-         const jConfiguration = ajConfigurations[0];
          jAccount.configuration = jConfiguration;
-         return fCallback(false, jAccount)
+         return fCallback(false, jAccount);
       })
    }) 
+}
+
+accountsController.getAccountConfiguration = (iAccountId, fCallback) =>{
+   aParams = [iAccountId]
+   sQuery = `SELECT invoicenumberstartvalue, invoicenumberprefix, invoicenumberminlength, bankname, bankregnumber, bankaccountnumber, usetaxes, taxpercentage, itempricesincludetaxes 
+               FROM accountconfigurations 
+               WHERE fk_accounts_id = ?`;
+   db.query(sQuery, aParams, (err, ajConfigurations) => {
+      if(err){
+         console.log('err', err)
+         return fCallback(true)
+      }
+      const jConfiguration = ajConfigurations[0];
+      jConfiguration.usetaxes = (jConfiguration.usetaxes == 1);
+      jConfiguration.itempricesincludetaxes = (jConfiguration.itempricesincludetaxes == 1);
+      console.log('jConfiguration', jConfiguration)
+      return fCallback(false, jConfiguration)
+   })
 }
 
 accountsController.getAccountStats = (iAccountId, fCallback) => {

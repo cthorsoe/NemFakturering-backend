@@ -27,7 +27,8 @@ global.functions = require('./utilities/functions');
 
 global.sSmsesIoApiToken = "$2y$10$fkMJCdFng8vkbpVD2h1OcuWGMuUCIk2SWfe62JvtXZtqhtiqvmPw6";
 
-const regexEmail = /\S+@\S+\.\S+/
+// const regexEmail = /\S+@\S+\.\S+/
+
 
 // configure passport.js to use the local strategy
 passport.use(new LocalStrategy(
@@ -88,8 +89,15 @@ passport.use(new LocalStrategy(
 app.use(cookies({
    cookieName: 'cookies',
    secret: process.env.SECRET,
-   duration: 30 * 60 * 1000,
-   activeDuration: 5 * 60 * 1000,
+   duration: process.env.COOKIE_AGE,
+   activeDuration: process.env.COOKIE_AGE,
+   cookie: { 
+      path: '/',
+      maxAge: process.env.COOKIE_AGE,
+      ephemeral: false,
+      httpOnly:true,
+      secure: false
+   }
 }));
 
 app.use(express.static(__dirname + '/../../public'));
