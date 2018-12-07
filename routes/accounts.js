@@ -58,6 +58,17 @@ router.get('/specific', (req, res) => {
    // })
 })
 
+router.put('/update-configuration', (req, res) => {
+   const jAccount = req.body
+   accountsController.updateAccountAndConfiguration(jAccount, (err, jAccount) => {
+      if(err){
+         console.log(err)
+         return res.send('ERROR');
+      }
+      return res.send(jAccount);
+   });
+});
+
 router.get('/stats/:accountId', (req, res) => {
    console.log('ROUTER HIT')
    const iAccountId = req.params.accountId

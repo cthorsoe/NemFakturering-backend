@@ -53,6 +53,7 @@ customersController.updateCustomer = (jCustomer, fCallback) => {
 }
 
 customersController.createCustomer = (jCustomer, iAccountId, fCallback) => {
+   let jPostedCustomer = Object.assign({}, jCustomer);
    jCustomer.fk_accounts_id = iAccountId;
    aParams = [jCustomer];
    sQuery = `INSERT INTO customers SET ?`;
@@ -62,8 +63,8 @@ customersController.createCustomer = (jCustomer, iAccountId, fCallback) => {
          console.log('err', err)
          return fCallback(true)
       }
-      jCustomer.id = jResult.insertId
-      return fCallback(false, jCustomer)
+      jPostedCustomer.id = jResult.insertId
+      return fCallback(false, jPostedCustomer)
    }) 
 }
 

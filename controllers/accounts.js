@@ -110,7 +110,7 @@ accountsController.getSpecificAccount = (sIdentifier, parameter, bAuthorizing, f
 
 accountsController.getAccountConfiguration = (iAccountId, fCallback) =>{
    aParams = [iAccountId]
-   sQuery = `SELECT invoicenumberstartvalue, invoicenumberprefix, invoicenumberminlength, bankname, bankregnumber, bankaccountnumber, usetaxes, taxpercentage, itempricesincludetaxes 
+   sQuery = `SELECT invoicenumberstartvalue, invoicenumberprefix, invoicenumberminlength, bankname, bankregnumber, bankaccountnumber, usetaxes, taxpercentage, itempricesincludetaxes, paymentduedays
                FROM accountconfigurations 
                WHERE fk_accounts_id = ?`;
    db.query(sQuery, aParams, (err, ajConfigurations) => {
@@ -124,6 +124,37 @@ accountsController.getAccountConfiguration = (iAccountId, fCallback) =>{
       console.log('jConfiguration', jConfiguration)
       return fCallback(false, jConfiguration)
    })
+}
+
+accountsController.updateAccountAndConfiguration = (jAccount, fCallback) => {
+   const jPostedAccount = Object.assign({}, jAccount);
+   const jConfiguration = jPostedAccount.configuration;
+   delete jAccount.configuration;
+   delete jAccount.id;
+
+   aParams = [jAccount, jPostedAccount.id];
+   sQuery = `UPDATE accounts
+            SET ?
+            WHERE id = ?`;
+   db.query(sQuery, aParams, (err, jResult) => {
+      console.log('res', jResult)
+      if(err){
+         console.log('err', err)
+            return fCallback(true)
+      }
+      aParams = [jConfiguration, jPostedAccount.id];
+      sQuery = `UPDATE accountconfigurations
+               SET ?
+               WHERE fk_accounts_id = ?`;
+      db.query(sQuery, aParams, (err, jResult) => {
+         console.log('res', jResult)
+         if(err){
+            console.log('err', err)
+            return fCallback(true)
+         }
+         return fCallback(false, jPostedAccount);
+      }) 
+   }) 
 }
 
 accountsController.getAccountStats = (iAccountId, fCallback) => {

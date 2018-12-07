@@ -1,4 +1,5 @@
 var invoicesController = {}
+const itemsController = require('./items')
 var sQuery = "";
 var aParams = [];
 var jError = {};
@@ -114,7 +115,141 @@ invoicesController.createInvoice = (jInvoice, iAccountId, fCallback) => {
    let iInvoiceId
    let iTotalInvoicePrice = 0
    aParams = [iAccountId, iAccountId, iAccountId];
-   sQuery = `SELECT invoices.invoicenumber, accountconfigurations.invoicenumberstartvalue, accountconfigurations.invoicenumberprefix, accountconfigurations.invoicenumberminlength FROM accounts
+   sQuery = `SELECT invoices.invoicenumber, accountconfigurations.invoicenumberstartvalue, accountconfigurations.invoicenumberprefix, accountconfigurations.invoicenumberminlength 
+            FROM accounts
+            INNER JOIN accountconfigurations ON accountconfigurations.fk_accounts_id = ?
+            LEFT JOIN invoices ON invoices.fk_accounts_id = ? AND invoices.invoicenumber LIKE CONCAT(accountconfigurations.invoicenumberprefix, '%')
+            WHERE accounts.id = ?
+            ORDER BY invoices.invoicenumber DESC
+            LIMIT 1`
+   db.query(sQuery, aParams, (err, ajResult) => {
+      if(err){
+         console.log('ERR INVOICE NUMBER QUERY', err)
+         return fCallback(true)
+      }
+      if(ajResult != undefined && ajResult.length > 0){
+         // let aItemsToInsert = [];
+         let ajItemsToInsert = [];
+         let ajNewItemIndexesMapping = [];
+         let aInvoiceItems = [];
+         // const ajNewItems = [];
+         const jResult = ajResult[0]
+         const sInvoiceNumber = invoicesController.generateInvoiceNumber(jResult);
+         aParams = [iAccountId, parseInt(jInvoice.customerId), sInvoiceNumber];
+         sQuery = `INSERT INTO invoices (fk_accounts_id, fk_customers_id, invoicenumber) VALUES (?, ?, ?) `
+         db.query(sQuery, aParams, (err, jResult) => {
+            console.log('res', jResult)
+            if(err){
+               console.log('ERR CREATE INVOICE QUERY', err)
+               return fCallback(true)
+            }
+            console.log('INVOICE CREATED', jResult.insertId)
+            iInvoiceId = jResult.insertId;
+            for (let i = 0; i < jInvoice.items.length - 1; i++) {
+               let item = jInvoice.items[i]
+               console.log('LOOPING ITEM', item, item.id, item.id == "")
+               if(typeof(item.id) == "number"){
+                  console.log('ID WASNT EMPTY STRING')
+                  if(item.id == 0){
+                     console.log('ID WAS 0')
+                     // let newItem = aItemsToInsert.find(x => x == item)
+                     let newItem = ajItemsToInsert.find(x => x == item)
+                     if(newItem == null){    
+                        console.log('NEWITEM WAS NULL')  
+                        // const aItemToInsert = [iAccountId, item.name, item.price]
+                        const ajItemToInsert = {
+                           fk_accounts_id:iAccountId,
+                           name: item.name,
+                           defaultprice:item.price
+                        }
+                        // aItemsToInsert.push(aItemToInsert);
+                        ajItemsToInsert.push(ajItemToInsert);
+                        // console.log('NEW ITEM TO INSERT', aItemToInsert)
+                        ajNewItemIndexesMapping.push([(ajItemsToInsert.length - 1), i])
+                     }
+                  }
+                  aInvoiceItems.push([iInvoiceId, item.id, item.amount, item.price])
+                  iTotalInvoicePrice += (item.price * item.amount)
+               }
+            }
+            // if(aItemsToInsert.length > 0){
+            if(ajItemsToInsert.length > 0){
+               // itemsController.createMultipleItems(aItemsToInsert, (err, ajInsertData) => {
+               itemsController.createMultipleItems(ajItemsToInsert, (err, ajInsertData) => {
+                  if(err){
+                     console.log('ERR INSERT NEW ITEMS QUERY', err)
+                     return fCallback(true)
+                  }
+                  console.log('INSERTED ITEMS', ajInsertData)
+                  for (let i = 0; i < ajInsertData.length; i++) {
+                     const jInsertData = ajInsertData[i];
+                     let ajIndexMapping = ajNewItemIndexesMapping.find(x => x[0] == jInsertData.index)
+                     let item = aInvoiceItems[ajIndexMapping[1]];
+                     item[1] = jInsertData.id;
+                  }
+                  invoicesController.createInvoiceItems(aInvoiceItems, err => {
+                     if(err){
+                        console.log('ERR CREATE INVOICE ITEMS', err)
+                        return fCallback(true)         
+                     }
+                     aParams = [iTotalInvoicePrice, iInvoiceId];
+                     sQuery = `UPDATE invoices SET totalprice = ? WHERE id = ?`;
+                     db.query(sQuery, aParams, (err, jResult) => {
+                        console.log('res', jResult)
+                        if(err){
+                           console.log('ERR UPDATE INVOICE DATA', err)
+                           return fCallback(true)
+                        }
+                        return fCallback(false, iInvoiceId)
+                     })
+                  })
+
+               })
+            }else{
+               invoicesController.createInvoiceItems(aInvoiceItems, err => {
+                  if(err){
+                     console.log('ERR CREATE INVOICE ITEMS', err)
+                     return fCallback(true)         
+                  }
+                  aParams = [iTotalInvoicePrice, iInvoiceId];
+                  sQuery = `UPDATE invoices SET totalprice = ? WHERE id = ?`;
+                  db.query(sQuery, aParams, (err, jResult) => {
+                     console.log('res', jResult)
+                     if(err){
+                        console.log('ERR UPDATE INVOICE DATA', err)
+                        return fCallback(true)
+                     }
+                     return fCallback(false, iInvoiceId)
+                  })
+               })
+            }
+         })
+      }
+   })
+   // aParams = [iAccountId, jInvoice.customerId]
+   // sQuery = `INSERT INTO invoices SET fk_accounts_id = ?, fk_customers_id = ?`;
+   
+}
+
+invoicesController.createInvoiceItems = (aItemValues, fCallback) => {
+   aParams = aItemValues;
+   console.log('CREATING INVOICE ITEMS', aItemValues)
+   sQuery = `INSERT INTO invoiceitems (fk_invoices_id, fk_items_id, units, priceprunit) VALUES ?`;
+   db.query(sQuery, [aParams], (err, jResult) => {
+      if(err){
+         console.log(err)
+         return fCallback(true)
+      }
+      return fCallback(false)
+   }) 
+}
+
+/* invoicesController.createInvoice2 = (jInvoice, iAccountId, fCallback) => {
+   let iInvoiceId
+   let iTotalInvoicePrice = 0
+   aParams = [iAccountId, iAccountId, iAccountId];
+   sQuery = `SELECT invoices.invoicenumber, accountconfigurations.invoicenumberstartvalue, accountconfigurations.invoicenumberprefix, accountconfigurations.invoicenumberminlength 
+            FROM accounts
             INNER JOIN accountconfigurations ON accountconfigurations.fk_accounts_id = ?
             LEFT JOIN invoices ON invoices.fk_accounts_id = ? AND invoices.invoicenumber LIKE CONCAT(accountconfigurations.invoicenumberprefix, '%')
             WHERE accounts.id = ?
@@ -126,51 +261,15 @@ invoicesController.createInvoice = (jInvoice, iAccountId, fCallback) => {
          return fCallback(true)
       }
       if(ajResult != undefined && ajResult.length > 0){
+         const ajNewItems = [];
          const jResult = ajResult[0]
          const sInvoiceNumber = invoicesController.generateInvoiceNumber(jResult);
-         aParams = [iAccountId, parseInt(jInvoice.customerId), sInvoiceNumber];
-         sQuery = `INSERT INTO invoices (fk_accounts_id, fk_customers_id, invoicenumber) VALUES (?, ?, ?) `
-         db.query(sQuery, aParams, (err, jResult) => {
-            console.log('res', jResult)
-            if(err){
-               console.log('err', err)
-               return fCallback(true)
-            }
-            iInvoiceId = jResult.insertId;
-            aParams = [];
-            for (let i = 0; i < jInvoice.items.length - 1; i++) {
-               const item = jInvoice.items[i]
-               if(item.id != ""){
-                  aParams.push([iInvoiceId, item.id, item.amount, item.price])
-                  iTotalInvoicePrice += (item.price * item.amount)
-               }
-            }
-            console.log('INSERTING ITEMS', aParams);
-            sQuery = `INSERT INTO invoiceitems (fk_invoices_id, fk_items_id, units, priceprunit) VALUES ?`;
-            db.query(sQuery, [aParams], (err, jResult) => {
-               console.log('res', jResult)
-               if(err){
-                  console.log('err', err)
-                  return fCallback(true)
-               }
-               sQuery = `UPDATE invoices SET totalprice = ? WHERE id = ?`;
-               aParams = [iTotalInvoicePrice, iInvoiceId];
-               db.query(sQuery, aParams, (err, jResult) => {
-                  console.log('res', jResult)
-                  if(err){
-                     console.log('err', err)
-                     return fCallback(true)
-                  }
-               })
-               return fCallback(false, iInvoiceId)
-            }) 
-         })
       }
    })
    aParams = [iAccountId, jInvoice.customerId]
    sQuery = `INSERT INTO invoices SET fk_accounts_id = ?, fk_customers_id = ?`;
    
-}
+} */
 
 invoicesController.generateInvoiceNumber = (jInvoiceNumberData) =>{
    let sInvoiceNumber = '';

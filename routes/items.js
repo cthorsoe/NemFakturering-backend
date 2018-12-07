@@ -12,19 +12,39 @@ router.get('/list/:accountId', (req, res) => {
    })
 })
 
+router.post('/create', (req, res) => {
+   const jItem = req.body.item
+   const iAccountId = req.body.accountId
+   itemsController.createItem(jItem, iAccountId, (err, jItem) => {
+      if(err){
+         console.log(err)
+         return res.send(err)
+      }
+      return res.send(jItem)
+   })
+})
 
-// router.get('/search/:accountId/:query', (req, res) => {
-//    const iAccountId = req.params.accountId
-//    const sSearchQuery = req.params.query.toLowerCase()
-//    console.log('HIT', iAccountId, sSearchQuery);
-//    itemsController.searchItems(iAccountId, sSearchQuery, (err, ajItems) => {
-//       if(err){
-//          console.log(err)
-//          return res.send(err)
-//       }
-//       return res.send(ajItems)
-//    })
-// })
+router.delete('/delete/:itemId', (req, res) => {
+   const iItemId = req.params.itemId
+   itemsController.deleteItem(iItemId, (err, jResponse) => {
+      if(err){
+         console.log(err)
+         return res.send(err)
+      }
+      return res.send(jResponse)
+   })
+})
+
+router.put('/edit', (req, res) => {
+   const jItem = req.body
+   itemsController.updateItem(jItem, (err, jItem) => {
+      if(err){
+         console.log(err)
+         return res.send(err)
+      }
+      return res.send(jItem)
+   })
+})
 
 
 module.exports = router
