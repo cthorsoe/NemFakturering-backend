@@ -25,8 +25,6 @@ const accountsController = require('./controllers/accounts')
 global.db = require('./utilities/db');
 global.functions = require('./utilities/functions');
 
-global.sSmsesIoApiToken = "$2y$10$fkMJCdFng8vkbpVD2h1OcuWGMuUCIk2SWfe62JvtXZtqhtiqvmPw6";
-
 // const regexEmail = /\S+@\S+\.\S+/
 
 const iCookieDuration = parseInt(process.env.COOKIE_AGE);
@@ -147,70 +145,4 @@ app.get('/', (req, res) => {
    return res.send('NEM FAKTURERING API')
 })
 
-app.get('/testcookie', (req, res) => {
-   if(req.cookies && req.cookies.sessionkey){
-      // return res.send(req.cookies)
-      let sSessionKey = req.cookies.sessionkey;
-      let sSessionValue = req.cookies.sessionvalue;
-      let aParams = [sSessionKey];
-      let sQuery = `SELECT sessionsalt, fk_accounts_id FROM loginsessions WHERE sessionkey = ?`;
-      db.query(sQuery, aParams, (err, ajSessionData) => {
-         console.log('res', ajSessionData)
-         if(err){
-            console.log('err', err)
-            return res.send('ERROR')
-         }
-         if(ajSessionData.length < 1){
-            return res.send('ERROR')
-         }
-         let jSessionData = ajSessionData[0]
-         bcrypt.hash(jSessionData.fk_accounts_id, jSessionData.sessionsalt, undefined, (err, incrypted) => {
-            if(err){
-               console.log('ERR HASHING')
-               return res.send('ERROR')
-            }
-            if(incrypted == sSessionValue){
-               return res.send('MATCH')
-            }
-            return res.send('NO MATCH')
-         });
-      }) 
-   }
-   // return res.send('NONE')
-})
-
-app.get('/setcookie', (req, res) => {
-   let userId = 6;
-   bcrypt.genSalt(process.env.ENCRYPTION_ROUNDS, (err, salt) => {
-      if(err){
-         console.log('ERR GEN SALT')
-         return res.send('ERROR NO COOKIE SET')
-      }
-      bcrypt.hash(userId, salt, undefined, (err, incrypted) => {
-         if(err){
-            console.log('ERR HASHING')
-            return res.send('ERROR NO COOKIE SET')
-         }
-         let sSessionKey = uuid()
-         req.cookies.sessionvalue = incrypted
-         req.cookies.sessionkey = sSessionKey
-         let ajSessionData = [{
-            sessionkey: sSessionKey,
-            sessionsalt: salt,
-            fk_accounts_id: userId
-         }];
-         let sQuery = `INSERT INTO loginsessions SET ?`;
-         db.query(sQuery, ajSessionData, (err, jResult) => {
-            console.log('res', jResult)
-            if(err){
-               console.log('err', err)
-               return res.send('ERROR')
-            }
-            return res.send('COOKIE SET')
-         }) 
-         // return res.send('COOKIE SET')
-      });
-   });
-   // req.cookies.test = 'TEST1234'
-   // return res.send('COOKIE SET')
-})
+//  

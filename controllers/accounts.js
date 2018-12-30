@@ -30,7 +30,7 @@ accountsController.createAccount = (jAccount, fCallback) => {
                   db.query(sQuery, aParams, (err, jResult) => {
                      console.log('res', jResult)
                      if(err){
-                        console.log('DB QUERY ERR')
+                        console.log('DB QUERY ERR', err)
                         return fCallback(true, {status:'ERROR'})
                      }
                      if(jResult.affectedRows == 1){
@@ -86,9 +86,12 @@ accountsController.findExistingAccount = (sEmail, sUsername, fCallback) => {
 
 accountsController.getSpecificAccount = (sIdentifier, parameter, bAuthorizing, fCallback) => {
    aParams = [parameter]
+   // sQuery = `SELECT id, name, cvr, street, zipcode, city, email, phone` + (bAuthorizing ? ', password' : '') + `
+   //          FROM accounts 
+   //          WHERE ${sIdentifier} = ?`;
    sQuery = `SELECT id, name, cvr, street, zipcode, city, email, phone` + (bAuthorizing ? ', password' : '') + `
             FROM accounts 
-            WHERE ${sIdentifier} = ?`;
+            WHERE ` + db.escapeId(sIdentifier) + ` = ?`;
    db.query(sQuery, aParams, (err, ajAccounts) => {
       if(err){
          console.log(err)

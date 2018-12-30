@@ -169,20 +169,19 @@ router.get('/auth', (req, res) => {
             return res.send(jAccount)
          })
       }
-      // return res.send('undefined')
       });
    })
 })
 
 
-router.get('/redirect', (req, res) => {
-   return res.redirect('/accounts/redirected')
-})
+// router.get('/redirect', (req, res) => {
+//    return res.redirect('/accounts/redirected')
+// })
 
-router.get('/redirected', (req, res) => {
-   console.log('INSIDE   REDIRECTED')
-   return res.send('redirected')
-})
+// router.get('/redirected', (req, res) => {
+//    console.log('INSIDE   REDIRECTED')
+//    return res.send('redirected')
+// })
 
 // router.get('/test', (req, res) => {
 //    var strings = [];
@@ -200,12 +199,12 @@ router.get('/redirected', (req, res) => {
 //    return res.send(html);
 // })
 
-router.get('/test', (req, res) => {
-   let html = '';
-   const dbPw = '$2a$10$jtr7CUqnNaQb3y4D.8Uu9.X6z.ryTp/OdrAzpbxulIDT2Mq6hZYwK'
+// router.get('/test', (req, res) => {
+//    let html = '';
+//    const dbPw = '$2a$10$jtr7CUqnNaQb3y4D.8Uu9.X6z.ryTp/OdrAzpbxulIDT2Mq6hZYwK'
    
-   html = bcrypt.compareSync('password', dbPw)
-   return res.send(html);
-})
+//    html = bcrypt.compareSync('password', dbPw)
+//    return res.send(html);
+// })
 
 module.exports = router

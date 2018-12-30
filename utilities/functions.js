@@ -6,7 +6,7 @@ var jFunctions = {}
 const jError = {} // ??
 
 jFunctions.formatDate = (date, format = 'DD-MM-YYYY') => {
-    return moment(date).format(format);
+   return moment(date).format(format);
 }
   
 jFunctions.genRandomString = function(iLength, bUpperCase = false){
