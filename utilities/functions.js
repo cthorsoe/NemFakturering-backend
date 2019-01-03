@@ -16,22 +16,6 @@ jFunctions.genRandomString = function(iLength, bUpperCase = false){
     }
     return sRandomString
 };
-  
-jFunctions.sha512 = function(sInput, sSalt){
-    var hash = crypto.createHmac('sha512', sSalt); /** Hashing algorithm sha512 */
-    hash.update(sInput);
-    var sHash = hash.digest('hex');
-    return {
-        salt:sSalt,
-        hash:sHash
-    };
-};
-  
-jFunctions.createSaltHash = function(sInput) {
-    var sSalt = jFunctions.genRandomString(16) /** Returns salt of length 16 */
-    var jSaltHash = jFunctions.sha512(sInput, sSalt)
-    return jSaltHash
-}
 
 jFunctions.prepareInvoiceList = ajInvoices => {
     let ajPreparedInvoices = []
@@ -78,8 +62,7 @@ jFunctions.prepareInvoiceList = ajInvoices => {
             }
             ajPreparedInvoices.push(jPreparedInvoice);
             console.log('pushed invoice', jPreparedInvoice, ajPreparedInvoices.length);
-        }
-      
+        }      
     }
     return ajPreparedInvoices;
 }

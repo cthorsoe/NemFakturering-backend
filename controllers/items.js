@@ -6,15 +6,19 @@ var jSuccess = { status: 'success'}
 
 
 itemsContoller.getAccountsItems = (iAccountId, fCallback) => {
-   console.log('CONTROLLER HIT')
    aParams = [false, iAccountId]
    sQuery = `SELECT id, name, defaultprice
             FROM items 
             WHERE deleted = ? AND fk_accounts_id = ?`;
    db.query(sQuery, aParams, (err, ajItems) => {
       if(err){
-          console.log('err', err)
-          return fCallback(true)
+         jError = global.functions.createError(
+            '071', 
+            'controllers/items.js --> getAccountsItems --> DB QUERY ERROR',
+            'An error occured when running the SQL Query to get all items belonging to a specific account',
+            err
+         )
+         return fCallback(true, jError)
       }
       return fCallback(false, ajItems)
   }) 
@@ -26,12 +30,15 @@ itemsContoller.createItem = (jItem, iAccountId, fCallback) => {
    aParams = [jItem];
    sQuery = `INSERT INTO items SET ?`;
    db.query(sQuery, aParams, (err, jResult) => {
-      console.log('res', jResult)
       if(err){
-         console.log('err', err)
-         return fCallback(true)
-      }
-      
+         jError = global.functions.createError(
+            '073', 
+            'controllers/items.js --> createItem --> DB QUERY ERROR',
+            'An error occured when running the SQL Query to create a new item',
+            err
+         )
+         return fCallback(true, jError)
+      }      
       jPostedItem.id = jResult.insertId
       return fCallback(false, jPostedItem)
    }) 
@@ -43,10 +50,14 @@ itemsContoller.deleteItem = (iItemId, fCallback) => {
             SET deleted = 1
             WHERE id = ?`;
    db.query(sQuery, aParams, (err, jResult) => {
-      console.log('res', jResult)
       if(err){
-         console.log('err', err)
-          return fCallback(true)
+         jError = global.functions.createError(
+            '075', 
+            'controllers/items.js --> deleteItem --> DB QUERY ERROR',
+            'An error occured when running the SQL Query to mark an item as deleted',
+            err
+         )
+         return fCallback(true, jError)
       }
       var jResponse = {
          deleted: jResult.affectedRows == 1
@@ -61,17 +72,20 @@ itemsContoller.updateItem = (jItem, fCallback) => {
             SET ?
             WHERE id = ?`;
    db.query(sQuery, aParams, (err, jResult) => {
-      console.log('res', jResult)
       if(err){
-         console.log('err', err)
-            return fCallback(true)
+         jError = global.functions.createError(
+            '077', 
+            'controllers/items.js --> updateItem --> DB QUERY ERROR',
+            'An error occured when running the SQL Query to update an existing item',
+            err
+         )
+         return fCallback(true, jError)
       }
       return fCallback(false, jItem)
    })
 }
 
 itemsContoller.createMultipleItems = (aItemData, fCallback) => {
-   
    for (let i = 0; i < aItemData.length; i++) {
       const aItem = aItemData[i];
       let ajInsertData = []
@@ -79,8 +93,13 @@ itemsContoller.createMultipleItems = (aItemData, fCallback) => {
       sQuery = `INSERT INTO items SET ?`;
       db.query(sQuery, aParams, (err, jResult) => {
          if(err){
-            console.log('err', err)
-            return fCallback(true)
+            jError = global.functions.createError(
+               '079', 
+               'controllers/items.js --> createMultipleItems --> DB QUERY ERROR',
+               'An error occured when running the SQL Query to bulk insert multiple items',
+               err
+            )
+            return fCallback(true, jError)
          }
          const jInsertData = {
             id: jResult.insertId,
@@ -92,16 +111,6 @@ itemsContoller.createMultipleItems = (aItemData, fCallback) => {
          }
       }) 
    }
-   /* aParams = [aItemData];
-   sQuery = `INSERT INTO items (fk_accounts_id, name, defaultprice) VALUES ?`;
-   db.query(sQuery, aParams, (err, jResult) => {
-      console.log('res', jResult)
-      if(err){
-         console.log('err', err)
-         return fCallback(true)
-      }
-      return fCallback(false, jResult)
-   })  */
 }
 
 module.exports = itemsContoller

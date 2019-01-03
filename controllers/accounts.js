@@ -5,9 +5,16 @@ var jError = {};
 var jSuccess = {status: 'success'}
 
 accountsController.createAccount = (jAccount, fCallback) => {
-   console.log('CREATING ACCOUNT', jAccount)
    accountsController.findExistingAccount(jAccount.email, jAccount.username, (err, sResponse) => {
-      console.log('sResponse', sResponse)
+      if(err){
+         jError = global.functions.createError(
+            '001', 
+            'controllers/accounts.js --> createAccount --> findExistingAccount() ERROR',
+            'An error was returned when running the findExistingAccount() function',
+            err
+         )
+        return fCallback(jError)
+      }
       switch (sResponse) {
          case 'EMAILANDUSERNAMETAKEN':
          case 'EMAILTAKEN':
@@ -16,31 +23,50 @@ accountsController.createAccount = (jAccount, fCallback) => {
          case 'AVAILABLE':
             bcrypt.genSalt(process.env.ENCRYPTION_ROUNDS, (err, salt) => {
                if(err){
-                  console.log('ERR GEN SALT')
-                  return fCallback(true, {status:'ERROR'})
+                  jError = global.functions.createError(
+                     '003', 
+                     'controllers/accounts.js --> createAccount --> genSalt() ERROR',
+                     'An error was returned when trying to generateSalt value using the genSalt() function',
+                     err
+                  )
+                  return fCallback(true, jError)
                }
                bcrypt.hash(jAccount.password, salt, undefined, (err, incrypted) => {
                   if(err){
-                     console.log('ERR HASHING')
-                     return fCallback(true, {status:'ERROR'})
+                     jError = global.functions.createError(
+                        '005', 
+                        'controllers/accounts.js --> createAccount --> hash() ERROR',
+                        'An error was returned when trying to hash the value using the hash() function',
+                        err
+                     )
+                     return fCallback(true, jError)
                   }
                   jAccount.password = incrypted;
                   aParams = [jAccount];
                   sQuery = `INSERT INTO accounts SET ?`;
                   db.query(sQuery, aParams, (err, jResult) => {
-                     console.log('res', jResult)
                      if(err){
-                        console.log('DB QUERY ERR', err)
-                        return fCallback(true, {status:'ERROR'})
+                        jError = global.functions.createError(
+                           '007', 
+                           'controllers/accounts.js --> createAccount --> DB QUERY ERROR',
+                           'An error was returned when trying to execute the query to create a new account',
+                           err
+                        )
+                        return fCallback(true, jError)
                      }
                      if(jResult.affectedRows == 1){
                         aParams = [jResult.insertId];
                         sQuery = `INSERT INTO accountconfigurations SET fk_accounts_id = ?`;
                         db.query(sQuery, aParams, (err, jResult) => {
-                           console.log('res', jResult)
+                           // console.log('res', jResult)
                            if(err){
-                              console.log('DB CONFIG QUERY ERR')
-                              return fCallback(true, {status:'ERROR'})
+                              jError = global.functions.createError(
+                                 '009', 
+                                 'controllers/accounts.js --> createAccount --> DB QUERY ERROR',
+                                 'An error was returned when trying to execute the query to create a new account configuration',
+                                 err
+                              )
+                              return fCallback(true, jError)
                            }
                            if(jResult.affectedRows == 1){
                               return fCallback(false, {status:'SUCCESS'})
@@ -53,8 +79,12 @@ accountsController.createAccount = (jAccount, fCallback) => {
             break;
          case 'ERROR':
          default:
-            console.log('ERROR OR DEFAULT CASE')
-            return fCallback(true, { status:'ERROR' })
+            jError = global.functions.createError(
+               '011', 
+               'controllers/accounts.js --> createAccount --> UNEXPECTED RESPONSE',
+               'Recieved an unexpected response from the findExistingAccount() function'
+            )
+            return fCallback(true, jError)
       }
    })
 }
@@ -66,8 +96,13 @@ accountsController.findExistingAccount = (sEmail, sUsername, fCallback) => {
             WHERE email = ? OR username = ?`;
    db.query(sQuery, aParams, (err, ajAccounts) => {
       if(err){
-         console.log('FIND ACCOUNT QUERY ERROR', err)
-         return fCallback(true, 'ERROR')
+         jError = global.functions.createError(
+            '013', 
+            'controllers/accounts.js --> findExistingAccount --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to find an existing account',
+            err
+         )
+         return fCallback(true, jError)
       }
       if(ajAccounts.length > 0){
          let jAccount = ajAccounts[0];
@@ -86,24 +121,31 @@ accountsController.findExistingAccount = (sEmail, sUsername, fCallback) => {
 
 accountsController.getSpecificAccount = (sIdentifier, parameter, bAuthorizing, fCallback) => {
    aParams = [parameter]
-   // sQuery = `SELECT id, name, cvr, street, zipcode, city, email, phone` + (bAuthorizing ? ', password' : '') + `
-   //          FROM accounts 
-   //          WHERE ${sIdentifier} = ?`;
    sQuery = `SELECT id, name, cvr, street, zipcode, city, email, phone` + (bAuthorizing ? ', password' : '') + `
             FROM accounts 
             WHERE ` + db.escapeId(sIdentifier) + ` = ?`;
    db.query(sQuery, aParams, (err, ajAccounts) => {
       if(err){
-         console.log(err)
-         return fCallback(true, err)
+         jError = global.functions.createError(
+            '015', 
+            'controllers/accounts.js --> getSpecificAccount --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to find a specific account',
+            err
+         )
+         return fCallback(true, jError)
       }else if(ajAccounts.length < 1){
          return fCallback(false, undefined)
       }
       const jAccount = ajAccounts[0];
       accountsController.getAccountConfiguration(jAccount.id, (err, jConfiguration) => {
          if(err){
-            console.log('err', err)
-            return fCallback(true, err)
+            jError = global.functions.createError(
+               '017', 
+               'controllers/accounts.js --> getSpecificAccount --> DB QUERY ERROR',
+               'An error occured when trying to run the SQL Query to find a specific accounts accountconfiguration',
+               err
+            )
+            return fCallback(true, jError)
          }
          jAccount.configuration = jConfiguration;
          return fCallback(false, jAccount);
@@ -118,8 +160,13 @@ accountsController.getAccountConfiguration = (iAccountId, fCallback) =>{
                WHERE fk_accounts_id = ?`;
    db.query(sQuery, aParams, (err, ajConfigurations) => {
       if(err){
-         console.log('err', err)
-         return fCallback(true)
+         jError = global.functions.createError(
+            '019', 
+            'controllers/accounts.js --> getAccountConfiguration --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to find a specific accounts accountconfiguration',
+            err
+         )
+         return fCallback(true, jError)
       }
       const jConfiguration = ajConfigurations[0];
       jConfiguration.usetaxes = (jConfiguration.usetaxes == 1);
@@ -140,20 +187,28 @@ accountsController.updateAccountAndConfiguration = (jAccount, fCallback) => {
             SET ?
             WHERE id = ?`;
    db.query(sQuery, aParams, (err, jResult) => {
-      console.log('res', jResult)
       if(err){
-         console.log('err', err)
-            return fCallback(true)
+         jError = global.functions.createError(
+            '021', 
+            'controllers/accounts.js --> updateAccountAndConfiguration --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to update an account',
+            err
+         )
+         return fCallback(true, jError)
       }
       aParams = [jConfiguration, jPostedAccount.id];
       sQuery = `UPDATE accountconfigurations
                SET ?
                WHERE fk_accounts_id = ?`;
       db.query(sQuery, aParams, (err, jResult) => {
-         console.log('res', jResult)
-         if(err){
-            console.log('err', err)
-            return fCallback(true)
+         if(err){ 
+            jError = global.functions.createError(
+               '023', 
+               'controllers/accounts.js --> updateAccountAndConfiguration --> DB QUERY ERROR',
+               'An error occured when trying to run the SQL Query to update an accountconfiguration',
+               err
+            )
+            return fCallback(true, jError)
          }
          return fCallback(false, jPostedAccount);
       }) 
@@ -161,33 +216,23 @@ accountsController.updateAccountAndConfiguration = (jAccount, fCallback) => {
 }
 
 accountsController.getAccountStats = (iAccountId, fCallback) => {
-   console.log('GETTING STATS');
    aParams = [iAccountId]
    sQuery = `SELECT COUNT(id) AS amount, SUM(totalprice) AS total, AVG(totalprice) AS avgPrice
             FROM invoices 
             WHERE fk_accounts_id = ?`;
    db.query(sQuery, aParams, (err, jResult) => {
       if(err){
-          console.log('err', err)
-          return fCallback(true)
+         jError = global.functions.createError(
+            '025', 
+            'controllers/accounts.js --> getAccountStats --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to get account stats',
+            err
+         )
+         return fCallback(true, jError)
       }
-
       return fCallback(false, jResult)
   }) 
 }
-
-/* accountsController.login = (req, res, next, fCallback) => {
-   passport.authenticate('local', (err, user, info) => {
-      if (info) { return res.send(info.message) }
-      if (err) { return next(err); }
-      if (!user) { fCallback(false, undefined) }
-      req.login(user, (err) => {
-         if (err) { return next(err); }
-         delete user.password;
-         return fCallback(false, user)
-      })
-   })(req, res, next);
-} */
 
 accountsController.login = (req, jLoginForm, fCallback) => {
    let sIdentifier = jLoginForm.identifier
@@ -197,8 +242,13 @@ accountsController.login = (req, jLoginForm, fCallback) => {
    }
    accountsController.getSpecificAccount(sField, sIdentifier, true, (err, jAccount) => {
       if(err){
-         console.log('ERR', err)
-         return fCallback(true, { status: 'ERROR' })
+         jError = global.functions.createError(
+            '027', 
+            'controllers/accounts.js --> login --> getSpecificAccount() ERROR',
+            'An error occured when trying to run the getSpecificAccount() function',
+            err
+         )
+         return fCallback(true, jError)
       }
       if(!jAccount){
          return fCallback(false, { status: 'NOUSER' })
@@ -208,7 +258,13 @@ accountsController.login = (req, jLoginForm, fCallback) => {
       }
       accountsController.setLoginCookie(req, jAccount.id, (err, jResponse) => {
          if(err){
-            return fCallback(true, { status: 'ERROR' })
+            jError = global.functions.createError(
+               '029', 
+               'controllers/accounts.js --> login --> setLoginCookie() ERROR',
+               'An error occured when trying to run the setLoginCookie() function',
+               err
+            )
+            return fCallback(true, jError)
          }
          delete jAccount.password
          return fCallback(false, jAccount)
@@ -219,13 +275,23 @@ accountsController.login = (req, jLoginForm, fCallback) => {
 accountsController.setLoginCookie = (req, iUserId, fCallback) => {
    bcrypt.genSalt(process.env.ENCRYPTION_ROUNDS, (err, salt) => {
       if(err){
-         console.log('ERR GEN SALT')
-         return fCallback(true, err)
+         jError = global.functions.createError(
+            '031', 
+            'controllers/accounts.js --> setLoginCookie --> genSalt() ERROR',
+            'An error occured when trying to generate the salt value using the genSalt() function',
+            err
+         )
+         return fCallback(true, jError)
       }
       bcrypt.hash(iUserId, salt, undefined, (err, incrypted) => {
          if(err){
-            console.log('ERR HASHING')
-            return fCallback(true, err)
+            jError = global.functions.createError(
+               '033', 
+               'controllers/accounts.js --> setLoginCookie --> hash() ERROR',
+               'An error occured when trying to hash the value using the hash() function',
+               err
+            )
+            return fCallback(true, jError)
          }
          let sSessionKey = uuid()
          req.cookies.sessionvalue = incrypted
@@ -238,8 +304,13 @@ accountsController.setLoginCookie = (req, iUserId, fCallback) => {
          sQuery = `INSERT INTO loginsessions SET ?`;
          db.query(sQuery, aParams, (err, jResult) => {
             if(err){
-               console.log('err', err)
-               return fCallback(true, err)
+               jError = global.functions.createError(
+                  '035', 
+                  'controllers/accounts.js --> setLoginCookie --> DB QUERY ERROR',
+                  'An error occured when trying to run the SQL Query to create a new loginsession in the DB',
+                  err
+               )
+               return fCallback(true, jError)
             }
             return fCallback(false, 'COOKIE SET')
          })
@@ -254,27 +325,20 @@ accountsController.getSessionData = (sSessionKey, fCallback) => {
    db.query(sQuery, aParams, (err, ajSessionData) => {
       console.log('res', ajSessionData)
       if(err){
-         console.log('err', err)
-         return fCallback(true)
+         jError = global.functions.createError(
+            '037', 
+            'controllers/accounts.js --> getSessionData --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to get the session data',
+            err
+         )
+         return fCallback(true, jError)
       }
       if(ajSessionData.length < 1){
          return fCallback(true)
       }
       let jSessionData = ajSessionData[0]
       return fCallback(false, jSessionData);
-      // bcrypt.hash(jSessionData.fk_accounts_id, jSessionData.sessionsalt, undefined, (err, incrypted) => {
-      //    if(err){
-      //       console.log('ERR HASHING')
-      //       return res.send('ERROR')
-      //    }
-      //    if(incrypted == sSessionValue){
-      //       return res.send('MATCH')
-      //    }
-      //    return res.send('NO MATCH')
-      // });
    }) 
 }
-
-
 
 module.exports = accountsController

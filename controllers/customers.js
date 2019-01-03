@@ -12,8 +12,13 @@ customersController.getAccountsCustomers = (iAccountId, fCallback) => {
             WHERE deleted = ? AND fk_accounts_id = ?`;
    db.query(sQuery, aParams, (err, ajCustomers) => {
       if(err){
-          console.log('err', err)
-          return fCallback(true)
+         jError = global.functions.createError(
+            '039', 
+            'controllers/customers.js --> getAccountsCustomers --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to get the customers beloning to a specific account',
+            err
+         )
+         return fCallback(true, jError)
       }
       return fCallback(false, ajCustomers)
   }) 
@@ -25,10 +30,14 @@ customersController.deleteCustomer = (iCustomerId, fCallback) => {
             SET deleted = 1
             WHERE id = ?`;
    db.query(sQuery, aParams, (err, jResult) => {
-      console.log('res', jResult)
       if(err){
-         console.log('err', err)
-          return fCallback(true)
+         jError = global.functions.createError(
+            '041', 
+            'controllers/customers.js --> deleteCustomer --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to mark a specific customer as deleted',
+            err
+         )
+         return fCallback(true, jError)
       }
       var jResponse = {
          deleted: jResult.affectedRows == 1
@@ -43,10 +52,14 @@ customersController.updateCustomer = (jCustomer, fCallback) => {
             SET name = ?, contactperson = ?, cvr = ?, street = ?, zipcode = ?, city = ?, email = ?, phone = ?
             WHERE id = ?`;
    db.query(sQuery, aParams, (err, jResult) => {
-      console.log('res', jResult)
       if(err){
-         console.log('err', err)
-            return fCallback(true)
+         jError = global.functions.createError(
+            '043', 
+            'controllers/customers.js --> updateCustomer --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to update a specific customer',
+            err
+         )
+         return fCallback(true, jError)
       }
       return fCallback(false, jCustomer)
    }) 
@@ -58,10 +71,14 @@ customersController.createCustomer = (jCustomer, iAccountId, fCallback) => {
    aParams = [jCustomer];
    sQuery = `INSERT INTO customers SET ?`;
    db.query(sQuery, aParams, (err, jResult) => {
-      console.log('res', jResult)
       if(err){
-         console.log('err', err)
-         return fCallback(true)
+         jError = global.functions.createError(
+            '045', 
+            'controllers/customers.js --> createCustomer --> DB QUERY ERROR',
+            'An error occured when trying to run the SQL Query to create a new customer',
+            err
+         )
+         return fCallback(true, jError)
       }
       jPostedCustomer.id = jResult.insertId
       return fCallback(false, jPostedCustomer)
