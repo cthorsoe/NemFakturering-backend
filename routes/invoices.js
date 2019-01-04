@@ -27,7 +27,7 @@ router.post('/save', (req, res) => {
    const iAccountId = req.body.accountId
    const jInvoice = req.body.invoice
    console.log('SAVING INVOICE', iAccountId, jInvoice)
-   invoicesController.createInvoice(jInvoice, iAccountId, (err, iInvoiceId) => {
+   invoicesController.saveInvoice(jInvoice, iAccountId, (err, iInvoiceId) => {
       if(err){
          console.log(err)
          return res.send(err)

@@ -11,12 +11,12 @@ invoicesController.getInvoiceById = (iInvoiceId, fCallback) => {
    db.query(sQuery, aParams, (err, ajInvoices) => {
       if(err){
          jError = global.functions.createError(
-            '047', 
+            '049', 
             'controllers/invoices.js --> getInvoiceById --> DB QUERY ERROR',
             'An error occured when trying to run the SQL Query to get a specific invoice',
             err
          )
-         return fCallback(true, jError)
+         return fCallback(jError)
       }
       const jInvoice = ajInvoices[0]
       const iCustomerId = jInvoice.fk_customers_id
@@ -28,12 +28,12 @@ invoicesController.getInvoiceById = (iInvoiceId, fCallback) => {
       db.query(sQuery, aParams, (err, ajItems) => {
          if(err){
             jError = global.functions.createError(
-               '049', 
+               '051', 
                'controllers/invoices.js --> getInvoiceById --> DB QUERY ERROR',
                'An error occured when trying to run the SQL Query to get the items belonging to a specific invoice',
                err
             )
-            return fCallback(true, jError)
+            return fCallback(jError)
          }
          jInvoice.items = ajItems;
          aParams = [iCustomerId];
@@ -41,12 +41,12 @@ invoicesController.getInvoiceById = (iInvoiceId, fCallback) => {
          db.query(sQuery, aParams, (err, ajCustomers) => {
             if(err){
                jError = global.functions.createError(
-                  '051', 
+                  '053', 
                   'controllers/invoices.js --> getInvoiceById --> DB QUERY ERROR',
                   'An error occured when trying to run the SQL Query to get the customer attached to a specific invoice',
                   err
                )
-               return fCallback(true, jError)
+               return fCallback(jError)
             }
             console.log('SELECTED CUSTOMER DATA, RETURNING DATA');
             const jCustomer = ajCustomers[0]
@@ -71,21 +71,19 @@ invoicesController.getAccountsInvoices = (iAccountId, fCallback) => {
    db.query(sQuery, aParams, (err, ajInvoices) => {
       if(err){
          jError = global.functions.createError(
-            '053', 
+            '055', 
             'controllers/invoices.js --> getAccountsInvoices --> DB QUERY ERROR',
             'An error occured when trying to run the SQL Query to all the invoices belonging to an account',
             err
          )
-         return fCallback(true, jError)
+         return fCallback(jError)
       }
       const ajPreparedInvoices = global.functions.prepareInvoiceList(ajInvoices);
       return fCallback(false, ajPreparedInvoices);
    })
 }
 
-invoicesController.createInvoice = (jInvoice, iAccountId, fCallback) => {
-   let iInvoiceId
-   let iTotalInvoicePrice = 0
+invoicesController.getInvoiceNumberData = (iAccountId, fCallback) => {
    aParams = [iAccountId, iAccountId, iAccountId];
    sQuery = `SELECT invoices.invoicenumber, accountconfigurations.invoicenumberstartvalue, accountconfigurations.invoicenumberprefix, accountconfigurations.invoicenumberminlength 
             FROM accounts
@@ -97,89 +95,103 @@ invoicesController.createInvoice = (jInvoice, iAccountId, fCallback) => {
    db.query(sQuery, aParams, (err, ajResult) => {
       if(err){
          jError = global.functions.createError(
-            '055', 
+            '057', 
             'controllers/invoices.js --> createInvoice --> DB QUERY ERROR',
             'An error occured when trying get the data used to create the invoice number for the new invoice',
             err
          )
-         return fCallback(true, jError)
+         return fCallback(jError)
       }
       if(ajResult != undefined && ajResult.length > 0){
-         let ajItemsToInsert = [];
-         let ajNewItemIndexesMapping = [];
+         const jResult = ajResult[0];
+         return fCallback(false, jResult)
+      }
+      return fCallback(false, undefined)
+   });
+}
+
+invoicesController.createInvoice = (iAccountId, jInvoice, sInvoiceNumber, fCallback) => {
+   aParams = [iAccountId, parseInt(jInvoice.customerId), sInvoiceNumber];
+   sQuery = `INSERT INTO invoices (fk_accounts_id, fk_customers_id, invoicenumber) VALUES (?, ?, ?) `
+   db.query(sQuery, aParams, (err, jResult) => {
+      if(err){
+         jError = global.functions.createError(
+            '059', 
+            'controllers/invoices.js --> createInvoice --> DB QUERY ERROR',
+            'An error occured when trying insert the new invoice in the database',
+            err
+         )
+         return fCallback(jError)
+      }
+      return fCallback(false, jResult.insertId)
+   });
+}
+
+invoicesController.updateTotalPrice = (iInvoiceId, iTotalInvoicePrice, fCallback) => {
+   aParams = [iTotalInvoicePrice, iInvoiceId];
+   sQuery = `UPDATE invoices SET totalprice = ? WHERE id = ?`;
+   db.query(sQuery, aParams, (err, jResult) => {
+      if(err){
+         jError = global.functions.createError(
+            '065', 
+            'controllers/invoices.js --> createInvoice --> DB QUERY ERROR',
+            'An error occured when running the SQL Query to update the total price of the invoice',
+            err
+         )
+         return fCallback(jError) 
+      }
+      return fCallback(false, jResult)
+   })
+}
+
+invoicesController.saveInvoice = (jInvoice, iAccountId, fCallback) => {
+   let iTotalInvoicePrice = 0
+   invoicesController.getInvoiceNumberData(iAccountId, (err, jResult) => {
+      if(err){
+         return fCallback(err)
+      }
+      if(jResult != undefined){
+         let aItemsToInsert = [];
+         let aNewItemIndexesMapping = [];
          let aInvoiceItems = [];
-         const jResult = ajResult[0]
          const sInvoiceNumber = invoicesController.generateInvoiceNumber(jResult);
-         aParams = [iAccountId, parseInt(jInvoice.customerId), sInvoiceNumber];
-         sQuery = `INSERT INTO invoices (fk_accounts_id, fk_customers_id, invoicenumber) VALUES (?, ?, ?) `
-         db.query(sQuery, aParams, (err, jResult) => {
+         invoicesController.createInvoice(iAccountId, jInvoice, sInvoiceNumber, (err, iInvoiceId) => {
             if(err){
-               jError = global.functions.createError(
-                  '057', 
-                  'controllers/invoices.js --> createInvoice --> DB QUERY ERROR',
-                  'An error occured when trying insert the new invoice in the database',
-                  err
-               )
-               return fCallback(true, jError)
+               return fCallback(err)
             }
-            iInvoiceId = jResult.insertId;
             for (let i = 0; i < jInvoice.items.length - 1; i++) {
                let item = jInvoice.items[i]
                if(typeof(item.id) == "number"){
                   if(item.id == 0){
-                     let newItem = ajItemsToInsert.find(x => x == item)
-                     if(newItem == null){    
-                        const ajItemToInsert = {
-                           fk_accounts_id:iAccountId,
-                           name: item.name,
-                           defaultprice:item.price
-                        }
-                        ajItemsToInsert.push(ajItemToInsert);
-                        ajNewItemIndexesMapping.push([(ajItemsToInsert.length - 1), i])
+                     let newItem = aItemsToInsert.find(x => x == item)
+                     if(newItem == null){ 
+                        const aItemToInsert = [iAccountId, item.name, item.price]
+                        aItemsToInsert.push(aItemToInsert);
+                        aNewItemIndexesMapping.push([(aItemsToInsert.length - 1), i])
                      }
                   }
                   aInvoiceItems.push([iInvoiceId, item.id, item.amount, item.price])
                   iTotalInvoicePrice += (item.price * item.amount)
                }
             }
-            if(ajItemsToInsert.length > 0){
-               itemsController.createMultipleItems(ajItemsToInsert, (err, ajInsertData) => {
+            if(aItemsToInsert.length > 0){
+               itemsController.createMultipleItems(aItemsToInsert, (err, aItemData) => {
                   if(err){
-                     jError = global.functions.createError(
-                        '059', 
-                        'controllers/invoices.js --> createInvoice --> createMultipleItems() ERROR',
-                        'An error occured when running the createMultipleItems() to create all unknown items added to this invoice',
-                        err
-                     )
-                     return fCallback(true, jError)
+                     return fCallback(err)
                   }
-                  for (let i = 0; i < ajInsertData.length; i++) {
-                     const jInsertData = ajInsertData[i];
-                     let ajIndexMapping = ajNewItemIndexesMapping.find(x => x[0] == jInsertData.index)
+                  for (let i = 0; i < aItemData.length; i++) {
+                     const aSingleItemData = aItemData[i];
+                     let ajIndexMapping = aNewItemIndexesMapping.find(x => x[0] == aSingleItemData[4])
                      let item = aInvoiceItems[ajIndexMapping[1]];
-                     item[1] = jInsertData.id;
+                     item[1] = aSingleItemData[3];
                   }
                   invoicesController.createInvoiceItems(aInvoiceItems, err => {
                      if(err){
-                        jError = global.functions.createError(
-                           '061', 
-                           'controllers/invoices.js --> createInvoice --> createInvoiceItems() ERROR',
-                           'An error occured when running the createInvoiceItems() to create all items belonging to the invoice, after creating unknown items',
-                           err
-                        )
-                        return fCallback(true, jError)      
+                        return fCallback(err)      
                      }
-                     aParams = [iTotalInvoicePrice, iInvoiceId];
-                     sQuery = `UPDATE invoices SET totalprice = ? WHERE id = ?`;
-                     db.query(sQuery, aParams, (err, jResult) => {
+                     invoicesController.updateTotalPrice(iInvoiceId, iTotalInvoicePrice, (err, jResult) => {
                         if(err){
-                           jError = global.functions.createError(
-                              '063', 
-                              'controllers/invoices.js --> createInvoice --> DB QUERY ERROR',
-                              'An error occured when running the SQL Query to update the total price of the invoice, after creating unknown items',
-                              err
-                           )
-                           return fCallback(true, jError) 
+                           return fCallback(err) 
                         }
                         return fCallback(false, iInvoiceId)
                      })
@@ -189,48 +201,34 @@ invoicesController.createInvoice = (jInvoice, iAccountId, fCallback) => {
             }else{
                invoicesController.createInvoiceItems(aInvoiceItems, err => {
                   if(err){
-                     jError = global.functions.createError(
-                        '065', 
-                        'controllers/invoices.js --> createInvoice --> createInvoiceItems() ERROR',
-                        'An error occured when running the createInvoiceItems() to create all items belonging to the invoice, without creating unknown items',
-                        err
-                     )
-                     return fCallback(true, jError)       
+                     return fCallback(err)       
                   }
-                  aParams = [iTotalInvoicePrice, iInvoiceId];
-                  sQuery = `UPDATE invoices SET totalprice = ? WHERE id = ?`;
-                  db.query(sQuery, aParams, (err, jResult) => {
-                     console.log('res', jResult)
+                  invoicesController.updateTotalPrice(iInvoiceId, iTotalInvoicePrice, (err, jResult) => {
                      if(err){
-                        jError = global.functions.createError(
-                           '067', 
-                           'controllers/invoices.js --> createInvoice --> DB QUERY ERROR',
-                           'An error occured when running the SQL Query to update the total price of the invoice, without creating unknown items',
-                           err
-                        )
-                        return fCallback(true, jError) 
+                        return fCallback(err) 
                      }
                      return fCallback(false, iInvoiceId)
                   })
                })
             }
-         })
+         });
       }
    })
 }
 
 invoicesController.createInvoiceItems = (aItemValues, fCallback) => {
+   console.log('aItemValues', aItemValues)
    aParams = aItemValues;
    sQuery = `INSERT INTO invoiceitems (fk_invoices_id, fk_items_id, units, priceprunit) VALUES ?`;
    db.query(sQuery, [aParams], (err, jResult) => {
       if(err){
          jError = global.functions.createError(
-            '069', 
+            '071', 
             'controllers/invoices.js --> createInvoiceItems --> DB QUERY ERROR',
             'An error occured when creating invoice items to a new invoice',
             err
          )
-         return fCallback(true, jError)
+         return fCallback(jError)
       }
       return fCallback(false)
    }) 
@@ -239,7 +237,9 @@ invoicesController.createInvoiceItems = (aItemValues, fCallback) => {
 invoicesController.generateInvoiceNumber = (jInvoiceNumberData) =>{
    let sInvoiceNumber = '';
    if(jInvoiceNumberData.invoicenumber == null){
-      sInvoiceNumber += jInvoiceNumberData.invoicenumberprefix;
+      if(jInvoiceNumberData.invoicenumberprefix != null) {
+         sInvoiceNumber += jInvoiceNumberData.invoicenumberprefix;
+      }
       const sStartVal = jInvoiceNumberData.invoicenumberstartvalue.toString()
       if(jInvoiceNumberData.invoicenumberminlength <= sStartVal.length){
          sInvoiceNumber += sStartVal
