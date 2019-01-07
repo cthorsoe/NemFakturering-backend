@@ -21,7 +21,7 @@ invoicesController.getInvoiceById = (iInvoiceId, fCallback) => {
       const jInvoice = ajInvoices[0]
       const iCustomerId = jInvoice.fk_customers_id
       delete jInvoice.fk_customers_id
-      sQuery = `SELECT items.id, items.name, invoiceitems.units, invoiceitems.priceprunit as price
+      sQuery = `SELECT items.id, items.name, invoiceitems.units as amount, invoiceitems.priceprunit as price
                FROM invoiceitems 
                INNER JOIN items ON invoiceitems.fk_items_id = items.id
                WHERE fk_invoices_id = ?`;
@@ -88,10 +88,14 @@ invoicesController.getInvoiceNumberData = (iAccountId, fCallback) => {
    sQuery = `SELECT invoices.invoicenumber, accountconfigurations.invoicenumberstartvalue, accountconfigurations.invoicenumberprefix, accountconfigurations.invoicenumberminlength 
             FROM accounts
             INNER JOIN accountconfigurations ON accountconfigurations.fk_accounts_id = ?
-            LEFT JOIN invoices ON invoices.fk_accounts_id = ? AND invoices.invoicenumber LIKE CONCAT(accountconfigurations.invoicenumberprefix, '%')
+            LEFT JOIN invoices ON invoices.fk_accounts_id = ? 
+            AND ((accountconfigurations.invoicenumberprefix IS NOT NULL AND invoices.invoicenumber LIKE CONCAT(accountconfigurations.invoicenumberprefix, '%')) OR (accountconfigurations.invoicenumberprefix IS NULL) AND (invoices.invoicenumber REGEXP '^[0-9]+$'))
             WHERE accounts.id = ?
             ORDER BY invoices.invoicenumber DESC
             LIMIT 1`
+
+
+            // `invoices.invoicenumber LIKE IF(accountconfigurations.invoicenumberprefix != NULL, CONCAT(accountconfigurations.invoicenumberprefix, '%'), ) `
    db.query(sQuery, aParams, (err, ajResult) => {
       if(err){
          jError = global.functions.createError(
@@ -150,11 +154,13 @@ invoicesController.saveInvoice = (jInvoice, iAccountId, fCallback) => {
       if(err){
          return fCallback(err)
       }
+      console.log('INVOICE NUMBER  DATA',  jResult)
       if(jResult != undefined){
          let aItemsToInsert = [];
          let aNewItemIndexesMapping = [];
          let aInvoiceItems = [];
          const sInvoiceNumber = invoicesController.generateInvoiceNumber(jResult);
+         console.log('INVOICE NUMBER IS', sInvoiceNumber)
          invoicesController.createInvoice(iAccountId, jInvoice, sInvoiceNumber, (err, iInvoiceId) => {
             if(err){
                return fCallback(err)
@@ -248,9 +254,13 @@ invoicesController.generateInvoiceNumber = (jInvoiceNumberData) =>{
          sInvoiceNumber += sStartVal
       }
    }else{
-      sInvoiceNumber += jInvoiceNumberData.invoicenumberprefix
-      console.log(jInvoiceNumberData.invoicenumber, jInvoiceNumberData.invoicenumberprefix, parseInt(jInvoiceNumberData.invoicenumber.split(jInvoiceNumberData.invoicenumberprefix)[1]))
-      const sIdentifier = (parseInt(jInvoiceNumberData.invoicenumber.split(jInvoiceNumberData.invoicenumberprefix)[1]) + 1).toString()
+      let sIdentifier = '';
+      if(jInvoiceNumberData.invoicenumberprefix != null){
+         sInvoiceNumber += jInvoiceNumberData.invoicenumberprefix
+         sIdentifier = (parseInt(jInvoiceNumberData.invoicenumber.split(jInvoiceNumberData.invoicenumberprefix)[1]) + 1).toString()
+      }else{
+         sIdentifier = (parseInt(jInvoiceNumberData.invoicenumber) + 1).toString();
+      }
       if(jInvoiceNumberData.invoicenumberminlength <= sIdentifier.length){
          sInvoiceNumber += sIdentifier
       }else{

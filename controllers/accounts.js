@@ -196,6 +196,9 @@ accountsController.updateAccountAndConfiguration = (jAccount, fCallback) => {
          )
          return fCallback(jError)
       }
+      if(jConfiguration.invoicenumberprefix.trim() == ''){
+         jConfiguration.invoicenumberprefix = null;
+      }
       aParams = [jConfiguration, jPostedAccount.id];
       sQuery = `UPDATE accountconfigurations
                SET ?
