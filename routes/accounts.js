@@ -24,6 +24,15 @@ router.get('/specific/:accountId', (req, res) => {
    })
 })
 
+router.get('/logo/:accountId', (req, res) => {
+   console.log('ROUTER HIT')
+   const iAccountId = req.params.accountId
+   accountsController.getAccountLogo(iAccountId, (err, imgAvatar) => {
+      res.writeHead(200, {'Content-Type': 'image/jpeg' });
+      return res.end(imgAvatar, 'binary');
+   })
+})
+
 router.get('/specific', (req, res) => {
    console.log('ROUTER HIT')
    const sEmail = req.query.email
@@ -35,6 +44,7 @@ router.get('/specific', (req, res) => {
             console.log(err)
             return res.send(err)
          }
+         delete jAccount.emailverified
          return res.send(jAccount)
       })
    }else if(sUsername != undefined){
@@ -43,6 +53,7 @@ router.get('/specific', (req, res) => {
             console.log(err)
             return res.send(err)
          }
+         delete jAccount.emailverified
          return res.send(jAccount)
       })
    }else{
@@ -112,10 +123,95 @@ router.get('/auth', (req, res) => {
             if(err){
                return res.send('undefined')
             }
+
             return res.send(jAccount)
          })
       }
       });
+   })
+})
+
+router.post('/activate', (req, res) => {
+   let iAccountId = req.body.accountId
+   let jPaymentData = req.body.paymentData
+   // res.send('LOGIN HIT')
+   accountsController.recievePaymentAndActivate(iAccountId, jPaymentData, (err, jResponse) => {
+      if (err) {
+         return res.send(err)
+      }
+      return res.send({status:'SUCCESS'})
+   })
+});
+
+router.post('/subscribe', (req, res) => {
+   const iAccountId = req.body.accountId
+   const jPaymentData = req.body.paymentData
+   accountsController.saveStripeSubscription(iAccountId, jPaymentData, (err, jSubscription) => {
+      if (err) {
+         return res.send(err)
+      }
+      return res.send(jSubscription)
+   })
+});
+
+router.get('/subscription/:accountId', (req, res) => {
+   const iAccountId = req.params.accountId
+   accountsController.getSubscription(iAccountId, (err, jSubscription) => {
+      if (err) {
+         return res.send(err)
+      }
+      return res.send(jSubscription)
+   })
+});
+
+router.post('/cancel-subscription', (req, res) => {
+   const iAccountId = req.body.accountId
+   accountsController.cancelStripeSubscription(iAccountId, (err, jSubscription) => {
+      if (err) {
+         return res.send(err)
+      }
+      return res.send(jSubscription)
+   })
+});
+
+router.post('/reactivate-subscription', (req, res) => {
+   const iAccountId = req.body.accountId
+   accountsController.reactivateStripeSubscription(iAccountId, (err, jSubscription) => {
+      if (err) {
+         return res.send(err)
+      }
+      return res.send(jSubscription)
+   })
+});
+
+router.get('/verify/:verificationId', (req, res) => {
+   const sVerificationId = req.params.verificationId
+   accountsController.verifyAccount(sVerificationId, (err, sStatus) => {
+      if(err){
+         return res.send('AN ERROR OCCURED. VERIFICATION DID NOT GO THROUGH. TRY AGAIN LATER.')
+      }
+      if(sStatus == 'SUCCESS'){
+         return res.redirect(process.env.FRONTEND_URL)
+      }else if (sStatus == 'NOMATCH'){
+         return res.send('AN ERROR OCCURED. VERIFICATION LINK NOT VALID.')
+      }
+   })
+})
+
+router.post('/clear-session', (req, res) => {
+   console.log('COOKIES IS', req.cookies)
+   if(!req.cookies && req.cookies.sessionkey != undefined){
+      console.log('NO COOKIES')
+      return res.send({ status:'SUCCESS'})
+   }
+   accountsController.clearSession(req.cookies.sessionkey, req.cookies.sessionvalue, (err) => {
+      if(err){
+         console.log('GOT ERROR')
+         return res.send({ status:'ERROR'})
+      }
+      req.cookies.sessionkey = undefined;
+      req.cookies.sessionvalue = undefined;
+      return res.send({ status:'SUCCESS'})
    })
 })
 

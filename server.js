@@ -1,10 +1,12 @@
 global.express = require('express')
 const app = express()
+global.stripe = require('stripe')('sk_test_rsGoT0fNdNS4P77A9xCMWsym')
 global.uuid = require('uuid/v4');
 const cookies = require('client-sessions');
 require('dotenv').config()
 global.fs = require('fs')
 global.path = require('path')
+global.sharp = require('sharp');
 global.request = require('request')
 const bodyParser = require("body-parser")
 global.passport = require('passport');
@@ -97,3 +99,17 @@ app.listen(3333, err => {
    }
    console.log('CONNECTION SUCCESSFULLY ESTABLISHED ON PORT 3333')
 });
+
+/* app.get('/testemail', (req, res) => {
+   global.functions.sendEmail('cthorsoe95@gmail.com', 'Verify Easy Invoicing Account', 'This is a verification email')
+   return res.send('TEST EMAIL')
+}) */
+
+
+/* app.get('/random', (req, res) => {
+   let sRandomStrings = '';
+   for (let i = 0; i < 8.; i++) {
+      sRandomStrings += global.functions.genRandomString(64) + "<br>"
+   }
+   return res.send(sRandomStrings)
+}) */

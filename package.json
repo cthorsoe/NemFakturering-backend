@@ -19,11 +19,13 @@
       "mocha": "^5.2.0",
       "moment": "2.22.1",
       "mysql": "2.15.0",
-      "nodemailer": "4.6.4",
+      "nodemailer": "^4.6.4",
       "passport": "^0.4.0",
       "passport-local": "^1.0.0",
       "request": "2.86.0",
       "session-file-store": "^1.2.0",
+      "sharp": "^0.21.2",
+      "stripe": "6.20.0",
       "uuid": "^3.3.2"
    },
    "devDependencies": {
