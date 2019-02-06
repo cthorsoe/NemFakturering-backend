@@ -89,7 +89,7 @@ invoicesController.getInvoiceNumberData = (iAccountId, fCallback) => {
             FROM accounts
             INNER JOIN accountconfigurations ON accountconfigurations.fk_accounts_id = ?
             LEFT JOIN invoices ON invoices.fk_accounts_id = ? 
-            AND ((accountconfigurations.invoicenumberprefix IS NOT NULL AND invoices.invoicenumber LIKE CONCAT(accountconfigurations.invoicenumberprefix, '%')) OR (accountconfigurations.invoicenumberprefix IS NULL) AND (invoices.invoicenumber REGEXP '^[0-9]+$'))
+            AND ((accountconfigurations.invoicenumberprefix IS NOT NULL AND invoices.invoicenumber LIKE CONCAT(accountconfigurations.invoicenumberprefix, '%')) OR ((accountconfigurations.invoicenumberprefix IS NULL) AND (invoices.invoicenumber REGEXP '^[0-9]+$')))
             WHERE accounts.id = ?
             ORDER BY invoices.invoicenumber DESC
             LIMIT 1`
@@ -243,31 +243,49 @@ invoicesController.createInvoiceItems = (aItemValues, fCallback) => {
 invoicesController.generateInvoiceNumber = (jInvoiceNumberData) =>{
    let sInvoiceNumber = '';
    if(jInvoiceNumberData.invoicenumber == null){
+      console.log('IS NULL')
       if(jInvoiceNumberData.invoicenumberprefix != null) {
          sInvoiceNumber += jInvoiceNumberData.invoicenumberprefix;
+         console.log('ADDED PREFIX', sInvoiceNumber)
       }
       const sStartVal = jInvoiceNumberData.invoicenumberstartvalue.toString()
+      console.log('START VAL IS', sStartVal)
       if(jInvoiceNumberData.invoicenumberminlength <= sStartVal.length){
          sInvoiceNumber += sStartVal
+         console.log('ADDED STARTVAL', sInvoiceNumber)
       }else{
          sInvoiceNumber += "0".repeat((jInvoiceNumberData.invoicenumberminlength - sStartVal.length))
+         console.log('ADDED ZEROS', sInvoiceNumber)
          sInvoiceNumber += sStartVal
+         console.log('ADDED STARTVAL', sInvoiceNumber)
       }
    }else{
       let sIdentifier = '';
+      console.log('IS NOT NULL')
       if(jInvoiceNumberData.invoicenumberprefix != null){
          sInvoiceNumber += jInvoiceNumberData.invoicenumberprefix
+
+         console.log('ADDED PREFIX', sInvoiceNumber)
          sIdentifier = (parseInt(jInvoiceNumberData.invoicenumber.split(jInvoiceNumberData.invoicenumberprefix)[1]) + 1).toString()
       }else{
-         sIdentifier = (parseInt(jInvoiceNumberData.invoicenumber) + 1).toString();
+         sIdentifier = (parseInt(jInvoiceNumberData.invoicenumber) + 1).toString()
       }
+      if(sIdentifier < jInvoiceNumberData.invoicenumberstartvalue){
+          sIdentifier = jInvoiceNumberData.invoicenumberstartvalue.toString()
+      }
+
+      console.log('sIdentifier IS', sIdentifier)
       if(jInvoiceNumberData.invoicenumberminlength <= sIdentifier.length){
-         sInvoiceNumber += sIdentifier
+          sInvoiceNumber += sIdentifier
+          console.log('ADDED sIdentifier', sInvoiceNumber)
       }else{
          sInvoiceNumber += "0".repeat((jInvoiceNumberData.invoicenumberminlength - sIdentifier.length))
+         console.log('ADDED ZEROS', sInvoiceNumber)
          sInvoiceNumber += sIdentifier
+         console.log('ADDED sIdentifier', sInvoiceNumber)
       }
    }
+   console.log('ENDED AT', sInvoiceNumber)
    return sInvoiceNumber
 }
 
